@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import Browse from "./pages/Browse";
+import GigDetail from "./pages/GigDetail";
 import Profile from "./pages/Profile";
 import CreateGig from "./pages/CreateGig";
 import FreelancerDashboard from "./pages/FreelancerDashboard";
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/browse" element={<MarketplaceLayout><Browse /></MarketplaceLayout>} />
+            <Route path="/gig/:slug" element={<MarketplaceLayout><GigDetail /></MarketplaceLayout>} />
             
             {/* Protected Routes */}
             <Route
