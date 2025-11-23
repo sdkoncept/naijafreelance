@@ -42,14 +42,14 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
+        <div className="container mx-auto px-3 sm:px-4">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg flex items-center justify-center">
                 <Briefcase className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl text-gray-900">NaijaFreelance</span>
+              <span className="font-bold text-lg sm:text-xl text-gray-900">NaijaFreelance</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -204,11 +204,11 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
                   </DropdownMenu>
                 </>
               ) : (
-                <div className="flex items-center gap-2">
-                  <Button asChild variant="ghost">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Button asChild variant="ghost" size="sm" className="text-xs sm:text-sm">
                     <Link to="/auth">Sign In</Link>
                   </Button>
-                  <Button asChild>
+                  <Button asChild size="sm" className="text-xs sm:text-sm">
                     <Link to="/auth">Get Started</Link>
                   </Button>
                 </div>

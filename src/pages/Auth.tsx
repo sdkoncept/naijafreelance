@@ -232,7 +232,7 @@ export default function Auth() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <CardTitle className="text-2xl font-bold text-center">
+            <CardTitle className="text-xl sm:text-2xl font-bold text-center">
               NaijaFreelance
             </CardTitle>
           </div>
@@ -290,31 +290,31 @@ export default function Auth() {
                   
                   <div className="space-y-2">
                     <Label htmlFor="userType">I want to *</Label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => setUserType("freelancer")}
-                        className={`p-4 border-2 rounded-lg transition-all text-left ${
+                        className={`p-3 sm:p-4 border-2 rounded-lg transition-all text-left ${
                           userType === "freelancer"
                             ? "border-slate-600 bg-slate-50"
                             : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
-                        <Briefcase className={`h-5 w-5 mb-2 ${userType === "freelancer" ? "text-slate-600" : "text-gray-400"}`} />
-                        <div className="font-medium">Offer Services</div>
+                        <Briefcase className={`h-4 w-4 sm:h-5 sm:w-5 mb-1 sm:mb-2 ${userType === "freelancer" ? "text-slate-600" : "text-gray-400"}`} />
+                        <div className="font-medium text-sm sm:text-base">Offer Services</div>
                         <div className="text-xs text-gray-500 mt-1">I'm a freelancer</div>
                       </button>
                       <button
                         type="button"
                         onClick={() => setUserType("client")}
-                        className={`p-4 border-2 rounded-lg transition-all text-left ${
+                        className={`p-3 sm:p-4 border-2 rounded-lg transition-all text-left ${
                           userType === "client"
                             ? "border-slate-600 bg-slate-50"
                             : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
-                        <ShoppingBag className={`h-5 w-5 mb-2 ${userType === "client" ? "text-slate-600" : "text-gray-400"}`} />
-                        <div className="font-medium">Hire Freelancers</div>
+                        <ShoppingBag className={`h-4 w-4 sm:h-5 sm:w-5 mb-1 sm:mb-2 ${userType === "client" ? "text-slate-600" : "text-gray-400"}`} />
+                        <div className="font-medium text-sm sm:text-base">Hire Freelancers</div>
                         <div className="text-xs text-gray-500 mt-1">I'm a client</div>
                       </button>
                     </div>

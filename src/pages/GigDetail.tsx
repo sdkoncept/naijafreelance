@@ -175,17 +175,17 @@ export default function GigDetail() {
   ].filter((pkg) => pkg.price !== null && pkg.price !== undefined);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
       <Button
         variant="ghost"
         onClick={() => navigate("/browse")}
-        className="mb-6"
+        className="mb-4 sm:mb-6"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Browse
       </Button>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Images */}
@@ -208,7 +208,7 @@ export default function GigDetail() {
             <CardHeader>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <CardTitle className="text-3xl mb-2">{gig.title}</CardTitle>
+                  <CardTitle className="text-xl sm:text-2xl md:text-3xl mb-2">{gig.title}</CardTitle>
                   <div className="flex items-center gap-3 flex-wrap">
                     {gig.categories && (
                       <Badge variant="secondary">{gig.categories.name}</Badge>
@@ -277,7 +277,7 @@ export default function GigDetail() {
                           <Check className="w-5 h-5 text-slate-700" />
                         )}
                       </div>
-                      <div className="text-2xl font-bold text-slate-700">
+                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-slate-700">
                         {formatPrice(pkg.price)}
                       </div>
                     </CardHeader>
@@ -326,7 +326,7 @@ export default function GigDetail() {
                       {packages.find((p) => p.value === selectedPackage)?.name}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-lg">
+                  <div className="flex justify-between items-center text-base sm:text-lg">
                     <span className="font-medium">Total:</span>
                     <span className="text-slate-700 font-bold">
                       {formatPrice(

@@ -169,11 +169,11 @@ export default function Browse() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Browse Services</h1>
-        <p className="text-gray-600">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">Browse Services</h1>
+        <p className="text-sm sm:text-base text-gray-600">
           Discover talented Nigerian freelancers and their services
         </p>
       </div>
@@ -301,7 +301,7 @@ export default function Browse() {
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
-                        <div className="font-bold text-lg text-slate-700">
+                        <div className="font-bold text-base sm:text-lg text-slate-700">
                           {formatPrice(minPrice)}
                         </div>
                         {gig.profiles && (
