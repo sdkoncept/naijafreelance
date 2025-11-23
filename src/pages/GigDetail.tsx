@@ -5,9 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Star, Clock, TrendingUp, ArrowLeft, Check, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import PaystackPayment from "@/components/PaystackPayment";
 
 interface Gig {
   id: string;
@@ -49,6 +53,10 @@ export default function GigDetail() {
   const [gig, setGig] = useState<Gig | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<"basic" | "standard" | "premium" | null>(null);
+  const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [orderRequirements, setOrderRequirements] = useState("");
+  const [creatingOrder, setCreatingOrder] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState<{ id: string; order_number: string; price: number } | null>(null);
 
   useEffect(() => {
     if (slug) {
@@ -120,8 +128,155 @@ export default function GigDetail() {
       return;
     }
 
-    // TODO: Implement order creation
-    toast.success("Order functionality coming soon!");
+    // Check if user is trying to order their own gig
+    if (user.id === gig?.freelancer_id) {
+      toast.error("You cannot order your own service");
+      return;
+    }
+
+    setShowOrderDialog(true);
+  };
+
+  const createOrder = async () => {
+    if (!user || !gig || !selectedPackage) {
+      toast.error("Missing required information");
+      return;
+    }
+
+    setCreatingOrder(true);
+
+    try {
+      const selectedPkg = packages.find((p) => p.value === selectedPackage);
+      if (!selectedPkg || !selectedPkg.price) {
+        toast.error("Invalid package selected");
+        setCreatingOrder(false);
+        return;
+      }
+
+      const price = selectedPkg.price;
+      const commissionRate = 0.20; // 20% commission
+      const commissionAmount = price * commissionRate;
+      const freelancerEarnings = price - commissionAmount;
+
+      // Calculate delivery date
+      let deliveryDate: string | null = null;
+      if (selectedPkg.deliveryDays) {
+        const date = new Date();
+        date.setDate(date.getDate() + selectedPkg.deliveryDays);
+        deliveryDate = date.toISOString();
+      }
+
+      // Check if orders table exists by attempting a simple query first
+      const { error: tableCheckError } = await supabase
+        .from("orders")
+        .select("id")
+        .limit(1);
+
+      if (tableCheckError && tableCheckError.code === "PGRST205") {
+        toast.error("Orders table not found. Please run the database migration first.");
+        console.error("Orders table missing. Run migration: supabase/migrations/20251124000005_create_orders_and_payments.sql");
+        setCreatingOrder(false);
+        return;
+      }
+
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          client_id: user.id,
+          freelancer_id: gig.freelancer_id,
+          gig_id: gig.id,
+          package_type: selectedPackage,
+          price: price,
+          currency: "NGN",
+          status: "pending",
+          requirements: orderRequirements || null,
+          delivery_date: deliveryDate,
+          commission_rate: commissionRate,
+          commission_amount: commissionAmount,
+          freelancer_earnings: freelancerEarnings,
+        })
+        .select("id, order_number, price")
+        .single();
+
+      if (orderError) {
+        console.error("Order creation error:", orderError);
+        if (orderError.code === "PGRST205") {
+          toast.error("Orders table not found. Please run the database migration.");
+        } else if (orderError.code === "23503") {
+          toast.error("Invalid user or gig. Please refresh the page.");
+        } else if (orderError.code === "23505") {
+          toast.error("Order already exists. Please refresh the page.");
+        } else {
+          toast.error("Failed to create order: " + (orderError.message || "Unknown error"));
+        }
+        setCreatingOrder(false);
+        return;
+      }
+
+      if (order) {
+        setCreatedOrder(order);
+        // Update gig orders count (non-blocking)
+        supabase
+          .from("gigs")
+          .update({ orders_count: (gig.orders_count || 0) + 1 })
+          .eq("id", gig.id)
+          .then(({ error }) => {
+            if (error) {
+              console.warn("Failed to update gig orders count:", error);
+            }
+          });
+
+        toast.success("Order created successfully!");
+      } else {
+        toast.error("Order created but no data returned");
+        setCreatingOrder(false);
+      }
+    } catch (error: any) {
+      console.error("Unexpected error creating order:", error);
+      toast.error("Failed to create order: " + (error.message || "Unexpected error occurred"));
+      setCreatingOrder(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (reference: string) => {
+    if (!createdOrder) return;
+
+    try {
+      // Create payment record
+      const { error: paymentError } = await supabase
+        .from("payments")
+        .insert({
+          order_id: createdOrder.id,
+          amount: createdOrder.price,
+          currency: "NGN",
+          payment_gateway: "paystack",
+          gateway_reference: reference,
+          status: "completed",
+          commission_amount: createdOrder.price * 0.20,
+          freelancer_payout_amount: createdOrder.price * 0.80,
+          paid_at: new Date().toISOString(),
+        });
+
+      if (paymentError) throw paymentError;
+
+      // Update order status
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({ status: "in_progress" })
+        .eq("id", createdOrder.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Payment successful! Your order is now in progress.");
+      setShowOrderDialog(false);
+      setCreatedOrder(null);
+      setOrderRequirements("");
+      navigate(`/order/${createdOrder.id}`);
+    } catch (error: any) {
+      console.error("Error processing payment:", error);
+      toast.error("Payment recorded but failed to update order. Please contact support.");
+    }
   };
 
   if (loading) {
@@ -334,9 +489,15 @@ export default function GigDetail() {
                       )}
                     </span>
                   </div>
-                  <Button className="w-full" size="lg" onClick={handleOrder}>
-                    Place Order
-                  </Button>
+                  {user?.id === gig.freelancer_id ? (
+                    <p className="text-sm text-gray-500 text-center">
+                      You cannot order your own service
+                    </p>
+                  ) : (
+                    <Button className="w-full" size="lg" onClick={handleOrder}>
+                      Place Order
+                    </Button>
+                  )}
                 </>
               ) : (
                 <p className="text-sm text-gray-600 text-center">
@@ -382,6 +543,106 @@ export default function GigDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Order Dialog */}
+      {showOrderDialog && (
+        <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Place Your Order</DialogTitle>
+            <DialogDescription>
+              Review your order details and complete payment
+            </DialogDescription>
+          </DialogHeader>
+
+          {!createdOrder ? (
+            <div className="space-y-6">
+              {/* Order Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Order Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Service:</span>
+                    <span className="font-medium">{gig.title}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Package:</span>
+                    <span className="font-medium">
+                      {packages.find((p) => p.value === selectedPackage)?.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Freelancer:</span>
+                    <span className="font-medium">{gig.profiles?.full_name}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>Total:</span>
+                    <span className="text-slate-700">
+                      {formatPrice(
+                        packages.find((p) => p.value === selectedPackage)?.price || null
+                      )}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Requirements */}
+              <div className="space-y-2">
+                <Label htmlFor="requirements">Project Requirements (Optional)</Label>
+                <Textarea
+                  id="requirements"
+                  placeholder="Describe your project requirements, deadlines, or any specific details..."
+                  value={orderRequirements}
+                  onChange={(e) => setOrderRequirements(e.target.value)}
+                  rows={4}
+                  maxLength={1000}
+                />
+                <p className="text-xs text-gray-500">
+                  {orderRequirements.length}/1000 characters
+                </p>
+              </div>
+
+              {/* Create Order Button */}
+              <Button
+                onClick={createOrder}
+                disabled={creatingOrder}
+                className="w-full"
+                size="lg"
+              >
+                {creatingOrder ? "Creating Order..." : "Create Order & Proceed to Payment"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-green-700 mb-2">
+                  <Check className="w-5 h-5" />
+                  <span className="font-semibold">Order Created Successfully!</span>
+                </div>
+                <p className="text-sm text-green-600">
+                  Order Number: <span className="font-mono font-bold">{createdOrder.order_number}</span>
+                </p>
+              </div>
+
+              {/* Payment Component */}
+              <PaystackPayment
+                amount={createdOrder.price}
+                email={user.email || ""}
+                orderId={createdOrder.id}
+                orderNumber={createdOrder.order_number}
+                onSuccess={handlePaymentSuccess}
+                onCancel={() => {
+                  setShowOrderDialog(false);
+                  navigate(`/order/${createdOrder.id}`);
+                }}
+              />
+            </div>
+          )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

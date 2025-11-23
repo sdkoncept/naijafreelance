@@ -9,6 +9,8 @@ import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import Browse from "./pages/Browse";
 import GigDetail from "./pages/GigDetail";
+import OrderDetail from "./pages/OrderDetail";
+import PaymentCallback from "./pages/PaymentCallback";
 import Profile from "./pages/Profile";
 import CreateGig from "./pages/CreateGig";
 import FreelancerDashboard from "./pages/FreelancerDashboard";
@@ -75,6 +77,7 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/browse" element={<MarketplaceLayout><Browse /></MarketplaceLayout>} />
             <Route path="/gig/:slug" element={<MarketplaceLayout><GigDetail /></MarketplaceLayout>} />
+            <Route path="/payment/callback" element={<PaymentCallback />} />
             
             {/* Protected Routes */}
             <Route
@@ -147,6 +150,16 @@ const App = () => (
                 <ProtectedRoute>
                   <MarketplaceLayout>
                     <ClientOrders />
+                  </MarketplaceLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/order/:id"
+              element={
+                <ProtectedRoute>
+                  <MarketplaceLayout>
+                    <OrderDetail />
                   </MarketplaceLayout>
                 </ProtectedRoute>
               }
