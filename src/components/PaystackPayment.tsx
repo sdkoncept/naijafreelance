@@ -26,11 +26,47 @@ export default function PaystackPayment({
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+  // Get the key - Vite will replace this at build time
+  const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
+
+  // IMMEDIATE debug logging - runs on every render
+  console.log("🚀 PaystackPayment Component Loaded!");
+  console.log("🔑 PAYSTACK_PUBLIC_KEY:", PAYSTACK_PUBLIC_KEY);
+  console.log("🔑 import.meta.env.VITE_PAYSTACK_PUBLIC_KEY:", import.meta.env.VITE_PAYSTACK_PUBLIC_KEY);
+  console.log("📦 Full import.meta.env:", import.meta.env);
 
   useEffect(() => {
-    if (!PAYSTACK_PUBLIC_KEY) {
-      setError("Paystack public key not configured. Please add VITE_PAYSTACK_PUBLIC_KEY to your .env file.");
+    // Debug logging - visible in console
+    const envKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+    console.log("🔍 Paystack Debug (useEffect):", {
+      PAYSTACK_PUBLIC_KEY,
+      envKey,
+      "typeof PAYSTACK_PUBLIC_KEY": typeof PAYSTACK_PUBLIC_KEY,
+      "typeof envKey": typeof envKey,
+      "isUndefined": PAYSTACK_PUBLIC_KEY === undefined || envKey === undefined,
+      "isEmpty": !PAYSTACK_PUBLIC_KEY || PAYSTACK_PUBLIC_KEY === "",
+      "allEnvKeys": Object.keys(import.meta.env).filter(k => k.includes("PAYSTACK") || k.includes("VITE"))
+    });
+
+    // Check if key exists
+    const keyToUse = PAYSTACK_PUBLIC_KEY || envKey;
+    
+    if (!keyToUse || keyToUse === "") {
+      const errorMsg = "Paystack public key not configured. Please add VITE_PAYSTACK_PUBLIC_KEY to your .env file.";
+      console.error("❌ Paystack Error:", errorMsg);
+      console.error("PAYSTACK_PUBLIC_KEY value:", PAYSTACK_PUBLIC_KEY);
+      console.error("envKey value:", envKey);
+      console.error("Full import.meta.env:", import.meta.env);
+      setError(errorMsg);
+      return;
+    }
+
+    // Validate key format
+    if (!keyToUse.startsWith('pk_test_') && !keyToUse.startsWith('pk_live_')) {
+      const errorMsg = "Invalid Paystack public key format. Key should start with 'pk_test_' or 'pk_live_'";
+      console.error("Paystack Error:", errorMsg);
+      console.error("Key value:", keyToUse);
+      setError(errorMsg);
       return;
     }
 
@@ -39,6 +75,7 @@ export default function PaystackPayment({
       loadPaystackScript()
         .then(() => {
           setScriptLoaded(true);
+          console.log("Paystack script loaded successfully");
         })
         .catch((err) => {
           console.error("Error loading Paystack script:", err);
@@ -50,7 +87,8 @@ export default function PaystackPayment({
   }, []);
 
   const handlePayment = async () => {
-    if (!PAYSTACK_PUBLIC_KEY) {
+    const keyToUse = PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
+    if (!keyToUse) {
       toast.error("Payment gateway not configured");
       return;
     }
@@ -68,8 +106,9 @@ export default function PaystackPayment({
       const reference = `ORDER-${orderId}-${Date.now()}`;
 
       // Initialize Paystack payment
+      const keyToUse = PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
       initializePaystack({
-        publicKey: PAYSTACK_PUBLIC_KEY,
+        publicKey: keyToUse,
         email,
         amount: nairaToKobo(amount),
         reference,
@@ -107,6 +146,7 @@ export default function PaystackPayment({
   };
 
   if (error) {
+    console.error("❌ Paystack Error Displayed:", error);
     return (
       <Card>
         <CardContent className="py-6">
@@ -114,6 +154,10 @@ export default function PaystackPayment({
             <p className="font-medium">{error}</p>
             <p className="text-sm mt-2 text-gray-600">
               Please contact support if this issue persists
+            </p>
+            <p className="text-xs mt-4 text-gray-500 font-mono">
+              Debug: KEY={PAYSTACK_PUBLIC_KEY ? "FOUND" : "MISSING"} | 
+              ENV={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ? "FOUND" : "MISSING"}
             </p>
           </div>
         </CardContent>

@@ -130,21 +130,45 @@ Make sure your live site has these environment variables set:
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+VITE_PAYSTACK_PUBLIC_KEY=pk_live_your_live_key_here
 ```
+
+**⚠️ CRITICAL FOR PAYSTACK:**
+- Environment variables must be set **BEFORE** building
+- Vite embeds env variables at **build time**, not runtime
+- You must rebuild after adding/changing variables
 
 ### How to Set Environment Variables:
 
 **For Vercel/Netlify:**
 - Dashboard → Project Settings → Environment Variables
+- Add `VITE_PAYSTACK_PUBLIC_KEY` with your **LIVE** key (`pk_live_...`)
+- Redeploy after adding
 
-**For cPanel/Shared Hosting:**
-- May need to set in `.env` file in web root
-- Or configure via hosting control panel
+**For cPanel/Shared Hosting (FTP Upload):**
+1. **Create `.env` file** in your project root (locally)
+2. Add your variables:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+   VITE_PAYSTACK_PUBLIC_KEY=pk_live_your_live_key_here
+   ```
+3. **Build locally** with the `.env` file:
+   ```bash
+   npm run build
+   ```
+4. **Upload the `dist/` folder** to your server
+   - The env variables are now embedded in the built files
 
 **For VPS/Server:**
 - Create `.env` file in project root
 - Or set system environment variables
 - Or configure in web server (nginx/apache)
+- **Rebuild** after setting variables: `npm run build`
+
+### Paystack Key Types:
+- **Live Site:** Use `pk_live_...` (from Paystack dashboard in Live Mode)
+- **Local Development:** Use `pk_test_...` (from Paystack dashboard in Test Mode)
 
 ---
 

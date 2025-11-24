@@ -16,4 +16,16 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ['react', 'react-dom'],
   },
+  build: {
+    chunkSizeWarningLimit: 1000, // Increase limit to 1MB (optional - reduces warning noise)
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+        },
+      },
+    },
+  },
 }));

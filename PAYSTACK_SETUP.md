@@ -28,17 +28,45 @@ VITE_PAYSTACK_PUBLIC_KEY=pk_test_your_public_key_here
 - Never commit your secret key to the frontend - it should only be used on the backend
 - The public key is safe to use in the frontend
 
-## Step 3: Configure Webhook (Optional but Recommended)
+## Step 3: Configure Webhook (Optional - App Works Without It!)
 
-To verify payments server-side, set up a webhook:
+**Important:** Your app currently works WITHOUT webhooks! Payment verification happens client-side. Webhooks are only needed for advanced server-side verification in production.
+
+### If You Want to Set Up Webhooks (Optional):
 
 1. In Paystack dashboard, go to **Settings** → **API Keys & Webhooks**
-2. Click **Add Webhook URL**
-3. Enter your webhook URL: `https://your-domain.com/api/paystack/webhook`
-4. Select events to listen to:
-   - `charge.success` - When payment is successful
-   - `charge.failed` - When payment fails
-5. Save the webhook
+2. Scroll down to the **Webhooks** section
+3. Click **Add Webhook URL** or **Create Webhook**
+4. Enter your webhook URL: `https://your-domain.com/api/paystack/webhook`
+   - **Note:** You'll need a backend server to handle this. For now, you can skip webhooks.
+5. **Select Events** (if the option appears):
+   - Look for a dropdown or checkbox list
+   - Select: `charge.success` - When payment is successful
+   - Select: `charge.failed` - When payment fails
+   - If you don't see event selection, Paystack may auto-select all events or you can configure it later
+6. Save the webhook
+
+### If You Don't See Event Selection:
+
+**This is normal!** Some Paystack dashboard versions:
+- Auto-select all events by default
+- Allow you to configure events after creating the webhook
+- Show event selection in a different location
+
+**What to do:**
+1. Create the webhook URL first
+2. After saving, look for an "Edit" or "Configure" button
+3. You may see event options there, or in a separate "Events" tab
+4. **Don't worry if you can't find it** - your app works fine without webhooks!
+
+### Current Payment Flow (Works Without Webhooks):
+
+✅ Payment is verified client-side via callback URL  
+✅ Order status updates automatically  
+✅ Payment records are created in database  
+✅ Everything works without webhooks!
+
+**You can skip webhook setup for now** and add it later when you have a backend server.
 
 ## Step 4: Test the Integration
 

@@ -24,6 +24,7 @@ import Messages from "./pages/Messages";
 import Earnings from "./pages/Earnings";
 import UserManagement from "./pages/UserManagement";
 import AuditLogs from "./pages/AuditLogs";
+import PaystackTest from "./pages/PaystackTest";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MarketplaceLayout from "./components/MarketplaceLayout";
 import NotFound from "./pages/NotFound";
@@ -93,6 +94,7 @@ const App = () => (
               }
             />
             <Route path="/payment/callback" element={<PaymentCallback />} />
+            <Route path="/paystack-test" element={<MarketplaceLayout><PaystackTest /></MarketplaceLayout>} />
             
             {/* Protected Routes */}
             <Route
