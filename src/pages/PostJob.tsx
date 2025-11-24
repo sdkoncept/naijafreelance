@@ -68,6 +68,14 @@ export default function PostJob() {
     }
   };
 
+  const generateSlug = (title: string): string => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      .substring(0, 50);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -75,18 +83,86 @@ export default function PostJob() {
     try {
       if (!user?.id) {
         toast.error("You must be logged in to post a job");
+        setSaving(false);
         return;
       }
 
       if (!formData.title || !formData.description || !formData.category_id) {
         toast.error("Please fill in all required fields");
+        setSaving(false);
         return;
       }
 
-      // For now, we'll just show a message that job posting will be implemented
-      // In a full implementation, this would create a job posting that freelancers can apply to
-      toast.success("Job posting feature coming soon! For now, browse gigs and place orders directly.");
-      navigate("/browse");
+      // Generate unique slug
+      const baseSlug = generateSlug(formData.title);
+      let slug = baseSlug;
+      let counter = 0;
+      
+      // Check for existing slug
+      while (true) {
+        const { data: existing } = await supabase
+          .from("jobs")
+          .select("id")
+          .eq("slug", slug)
+          .eq("client_id", user.id)
+          .maybeSingle();
+        
+        if (!existing) break;
+        counter++;
+        slug = `${baseSlug}-${counter}`;
+      }
+
+      // Create job posting
+      const jobData = {
+        client_id: user.id,
+        title: formData.title,
+        slug: slug,
+        description: formData.description,
+        category_id: formData.category_id,
+        budget: formData.budget ? parseFloat(formData.budget) : null,
+        currency: "NGN" as const,
+        delivery_days: formData.delivery_days ? parseInt(formData.delivery_days) : null,
+        requirements: formData.requirements || null,
+        status: "open" as const,
+      };
+
+      const { data: job, error } = await supabase
+        .from("jobs")
+        .insert([jobData])
+        .select()
+        .single();
+
+      if (error) {
+        // Check if jobs table exists
+        if (error.code === "PGRST205") {
+          toast.error("Jobs table not found. Please run the database migration first.");
+          console.error("Jobs table missing. Run migration: supabase/migrations/20251124000006_create_jobs_table.sql");
+          setSaving(false);
+          return;
+        }
+        throw error;
+      }
+
+      // Log job creation
+      try {
+        await supabase.from("audit_logs").insert([{
+          user_id: user.id,
+          action: "job_create",
+          table_name: "jobs",
+          record_id: job.id,
+          new_data: {
+            title: jobData.title,
+            category_id: jobData.category_id,
+            budget: jobData.budget,
+            status: jobData.status,
+          },
+        }]);
+      } catch (logError) {
+        console.error("Error logging job creation:", logError);
+      }
+
+      toast.success("Job posted successfully! Freelancers can now view and apply to your job.");
+      navigate("/client/orders"); // Or navigate to a jobs list page
     } catch (error: any) {
       console.error("Error posting job:", error);
       toast.error("Failed to post job: " + error.message);

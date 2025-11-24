@@ -247,6 +247,14 @@ export default function AuditLogs() {
       case "gig_delete":
       case "gig_pause":
         return <Trash2 className="h-4 w-4" />;
+      // Jobs
+      case "job_create":
+        return <UserCheck className="h-4 w-4" />;
+      case "job_update":
+        return <FileEdit className="h-4 w-4" />;
+      case "job_close":
+      case "job_cancel":
+        return <Trash2 className="h-4 w-4" />;
       // Orders
       case "order_create":
         return <UserCheck className="h-4 w-4" />;

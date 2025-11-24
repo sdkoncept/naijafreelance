@@ -31,6 +31,11 @@ type AuditAction =
   | "payment_completed"
   | "payment_failed"
   | "payment_refunded"
+  // Jobs
+  | "job_create"
+  | "job_update"
+  | "job_close"
+  | "job_cancel"
   // Messages
   | "message_sent"
   | "message_read"
