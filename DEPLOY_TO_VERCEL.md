@@ -1,112 +1,122 @@
-# 🚀 Deploy to Vercel - Fix 404 Error
+# Deploy to Vercel via Git Push
 
-## The Problem
+This guide shows you how to push your changes to Git, which will automatically trigger a Vercel deployment.
 
-You're getting a 404 because the new code (including `/paystack-test` route) hasn't been deployed to Vercel yet.
+## Prerequisites
+- Git is installed
+- You have a Git repository set up (GitHub, GitLab, or Bitbucket)
+- Your Vercel project is connected to your Git repository
 
----
+## Step-by-Step Instructions
 
-## ✅ Solution: Deploy Your Code
+### Step 1: Check Your Changes
+```bash
+git status
+```
+This shows which files have been modified.
 
-### Option 1: Push to GitHub (If Connected)
-
-**If your project is connected to GitHub, Vercel will auto-deploy:**
-
-1. **Check what files changed:**
-   ```bash
-   git status
-   ```
-
-2. **Add all changes:**
-   ```bash
-   git add .
-   ```
-
-3. **Commit:**
-   ```bash
-   git commit -m "Add Paystack test page and fix Paystack key handling"
-   ```
-
-4. **Push to GitHub:**
-   ```bash
-   git push
-   ```
-
-5. **Vercel will automatically deploy** (check Vercel dashboard)
-
----
-
-### Option 2: Deploy via Vercel CLI
-
-**If not connected to GitHub, deploy directly:**
-
-1. **Install Vercel CLI** (if not already):
-   ```bash
-   npm i -g vercel
-   ```
-
-2. **Login to Vercel:**
-   ```bash
-   vercel login
-   ```
-
-3. **Deploy:**
-   ```bash
-   vercel --prod
-   ```
-
-4. **Follow the prompts** (it will ask about your project)
-
----
-
-## ⚠️ Important: Add Environment Variable FIRST
-
-**Before deploying, add the environment variable in Vercel:**
-
-1. **Go to Vercel Dashboard**
-2. **Settings → Environment Variables**
-3. **Add:**
-   - Key: `VITE_PAYSTACK_PUBLIC_KEY`
-   - Value: `pk_test_b35b82a6c7851235d65fa897b7c76360dae5b568`
-   - Environment: **ALL** (Production, Preview, Development)
-4. **Save**
-
-**Then deploy** (the env var will be included in the build)
-
----
-
-## After Deployment
-
-1. **Wait for deployment to finish** (check Vercel dashboard)
-2. **Visit:** https://naijafreelance.sdkoncept.com/paystack-test
-3. **Should work now!** ✅
-
----
-
-## Quick Commands
-
-**If using Git:**
+### Step 2: Add All Changes
 ```bash
 git add .
-git commit -m "Add Paystack test page"
+```
+This stages all your changes for commit.
+
+**Alternative:** To add specific files only:
+```bash
+git add src/pages/ContactUs.tsx
+git add src/pages/HowItWorks.tsx
+# etc.
+```
+
+### Step 3: Commit Your Changes
+```bash
+git commit -m "Add missing pages and update contact phone number"
+```
+Replace the message with a description of your changes.
+
+**Good commit messages:**
+- `"Add missing pages: How It Works, Help Center, Contact, Terms, Privacy"`
+- `"Update contact phone number to +234 (0) 7061350647"`
+- `"Fix 404 errors for footer links"`
+
+### Step 4: Push to Git
+```bash
 git push
 ```
 
-**If using Vercel CLI:**
+If this is your first push or you're pushing a new branch:
 ```bash
-vercel --prod
+git push -u origin main
+```
+(Replace `main` with your branch name if different, e.g., `master`)
+
+### Step 5: Monitor Vercel Deployment
+
+1. **Go to your Vercel Dashboard:**
+   - Visit https://vercel.com/dashboard
+   - Find your project
+
+2. **Watch the deployment:**
+   - You'll see a new deployment appear
+   - It will show "Building..." then "Deploying..."
+   - When it says "Ready", your site is live!
+
+3. **Check deployment status:**
+   - Green checkmark = Success ✅
+   - Red X = Failed (check logs) ❌
+
+### Step 6: Verify Your Changes
+
+Once deployment is complete:
+- Visit your live site
+- Check that the new pages work:
+  - `/how-it-works`
+  - `/help`
+  - `/contact`
+  - `/terms`
+  - `/privacy`
+- Verify the phone number is updated on the Contact page
+
+## Troubleshooting
+
+### If `git push` asks for credentials:
+- Use a Personal Access Token (not your password)
+- For GitHub: Settings → Developer settings → Personal access tokens
+- For GitLab: User Settings → Access Tokens
+
+### If deployment fails:
+1. Check Vercel build logs
+2. Look for error messages
+3. Common issues:
+   - Missing environment variables
+   - Build errors in your code
+   - Dependency issues
+
+### If changes don't appear:
+1. Wait a few minutes (deployment takes 1-3 minutes)
+2. Hard refresh your browser (Ctrl+F5 or Cmd+Shift+R)
+3. Clear browser cache
+4. Check that you're on the correct domain
+
+## Quick Command Summary
+
+```bash
+# Check status
+git status
+
+# Add all changes
+git add .
+
+# Commit
+git commit -m "Your commit message here"
+
+# Push to trigger Vercel deployment
+git push
 ```
 
----
+## Notes
 
-## Check Deployment Status
-
-1. **Go to Vercel Dashboard**
-2. **Click "Deployments" tab**
-3. **See the latest deployment status**
-4. **Wait for it to finish** (usually 1-2 minutes)
-
----
-
-**Deploy your code and the 404 will be fixed!** 🚀
-
+- Vercel automatically deploys on every push to your main branch
+- You can also set up preview deployments for other branches
+- Build time is usually 1-3 minutes
+- Your site will be live immediately after successful deployment

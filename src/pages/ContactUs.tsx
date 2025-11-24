@@ -72,7 +72,7 @@ export default function ContactUs() {
                   </div>
                   <div>
                     <h3 className="font-semibold mb-1">Call Us</h3>
-                    <p className="text-sm text-gray-600">+234 (0) 800 000 0000</p>
+                    <p className="text-sm text-gray-600">+234 (0) 7061350647</p>
                     <p className="text-xs text-gray-500">Mon-Fri, 9am-5pm WAT</p>
                   </div>
                 </div>
