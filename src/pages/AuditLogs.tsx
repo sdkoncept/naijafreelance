@@ -254,6 +254,10 @@ export default function AuditLogs() {
         return <FileEdit className="h-4 w-4" />;
       case "job_apply":
         return <MessageCircle className="h-4 w-4" />;
+      case "job_application_accepted":
+        return <CheckCircle className="h-4 w-4" />;
+      case "job_application_declined":
+        return <XCircle className="h-4 w-4" />;
       case "job_close":
       case "job_cancel":
         return <Trash2 className="h-4 w-4" />;

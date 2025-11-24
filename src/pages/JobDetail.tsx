@@ -11,6 +11,65 @@ import { ArrowLeft, Calendar, DollarSign, Clock, MessageCircle, Briefcase, MapPi
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 
+// Function to send email notification for job application
+const sendJobApplicationEmail = async (
+  clientId: string,
+  jobId: string,
+  freelancerId: string,
+  jobTitle: string
+) => {
+  try {
+    // Get client email
+    const { data: clientProfile } = await supabase
+      .from("profiles" as any)
+      .select("email, full_name")
+      .eq("id", clientId)
+      .single();
+
+    if (!clientProfile || !(clientProfile as any).email) {
+      console.warn("Client email not found, cannot send notification");
+      return;
+    }
+
+    // Get freelancer info
+    const { data: freelancerProfile } = await supabase
+      .from("profiles" as any)
+      .select("full_name, email")
+      .eq("id", freelancerId)
+      .single();
+
+    const client = clientProfile as any;
+    const freelancer = freelancerProfile as any;
+
+    // Call Supabase Edge Function to send email
+    // You'll need to create this function in Supabase
+    try {
+      const { error } = await supabase.functions.invoke("send-job-application-email", {
+        body: {
+          to: client.email,
+          clientName: client.full_name,
+          freelancerName: freelancer?.full_name || "A freelancer",
+          freelancerEmail: freelancer?.email,
+          jobTitle: jobTitle,
+          jobId: jobId,
+          applicationUrl: `${window.location.origin}/job/${jobId}/applications`,
+        },
+      });
+
+      if (error) {
+        console.error("Email function error:", error);
+        // Fallback: log to console (in production, you'd want proper error handling)
+      }
+    } catch (funcError) {
+      console.warn("Email function not available, skipping email notification:", funcError);
+      // Email function might not be set up yet - that's okay
+    }
+  } catch (error) {
+    console.error("Error sending email notification:", error);
+    // Don't throw - email failure shouldn't block application
+  }
+};
+
 interface Job {
   id: string;
   title: string;
@@ -78,17 +137,17 @@ export default function JobDetail() {
       if (data) {
         // Transform the data
         const transformedJob = {
-          ...data,
-          profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles,
-          categories: Array.isArray(data.categories) ? data.categories[0] : data.categories,
+          ...(data as any),
+          profiles: Array.isArray((data as any).profiles) ? (data as any).profiles[0] : (data as any).profiles,
+          categories: Array.isArray((data as any).categories) ? (data as any).categories[0] : (data as any).categories,
         };
         setJob(transformedJob);
 
         // Increment views count
         await supabase
           .from("jobs" as any)
-          .update({ views_count: (data.views_count || 0) + 1 })
-          .eq("id", data.id);
+          .update({ views_count: ((data as any).views_count || 0) + 1 })
+          .eq("id", (data as any).id);
       }
     } catch (error: any) {
       console.error("Error fetching job details:", error);
@@ -136,17 +195,71 @@ export default function JobDetail() {
     setSubmittingApplication(true);
 
     try {
-      // For now, we'll send a message to the client
-      // In a full implementation, you'd create a job_applications table
-      const { error: messageError } = await supabase
-        .from("messages" as any)
-        .insert({
-          sender_id: user.id,
-          receiver_id: job.client_id,
-          content: `Application for "${job.title}":\n\n${applicationText}`,
-        });
+      // Check if already applied
+      const { data: existingApplication } = await supabase
+        .from("job_applications" as any)
+        .select("id")
+        .eq("job_id", job.id)
+        .eq("freelancer_id", user.id)
+        .maybeSingle();
 
-      if (messageError) throw messageError;
+      if (existingApplication) {
+        toast.error("You have already applied for this job");
+        setSubmittingApplication(false);
+        return;
+      }
+
+      // Create job application
+      const { data: application, error: applicationError } = await supabase
+        .from("job_applications" as any)
+        .insert({
+          job_id: job.id,
+          freelancer_id: user.id,
+          application_text: applicationText,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (applicationError) {
+        if (applicationError.code === "23505") {
+          toast.error("You have already applied for this job");
+          setSubmittingApplication(false);
+          return;
+        }
+        if (applicationError.code === "PGRST205") {
+          toast.error("Job applications table not found. Please run the database migration.");
+          setSubmittingApplication(false);
+          return;
+        }
+        throw applicationError;
+      }
+
+      // Create message to client
+      let messageId = null;
+      try {
+        const { data: message, error: messageError } = await supabase
+          .from("messages" as any)
+          .insert({
+            sender_id: user.id,
+            receiver_id: job.client_id,
+            job_id: job.id,
+            content: `Application for "${job.title}":\n\n${applicationText}`,
+          })
+          .select()
+          .single();
+
+        if (!messageError && message) {
+          messageId = (message as any).id;
+          // Update application with message_id
+          await supabase
+            .from("job_applications" as any)
+            .update({ message_id: (message as any).id })
+            .eq("id", (application as any).id);
+        }
+      } catch (messageErr) {
+        console.warn("Failed to create message, but application was created:", messageErr);
+      }
 
       // Increment applications count
       await supabase
@@ -154,15 +267,24 @@ export default function JobDetail() {
         .update({ applications_count: (job.applications_count || 0) + 1 })
         .eq("id", job.id);
 
+      // Send email notification to client
+      try {
+        await sendJobApplicationEmail((job as any).client_id, (job as any).id, user.id, (job as any).title);
+      } catch (emailError) {
+        console.error("Failed to send email notification:", emailError);
+        // Don't fail the application if email fails
+      }
+
       // Log application
       try {
         await supabase.from("audit_logs").insert([{
           user_id: user.id,
           action: "job_apply",
-          table_name: "jobs",
-          record_id: job.id,
+          table_name: "job_applications",
+          record_id: (application as any).id,
           new_data: {
-            job_title: job.title,
+            job_id: (job as any).id,
+            job_title: (job as any).title,
             application_text: applicationText.substring(0, 100), // First 100 chars
           },
         }]);
@@ -170,9 +292,9 @@ export default function JobDetail() {
         console.error("Error logging application:", logError);
       }
 
-      toast.success("Application sent! The client will review your message.");
+      toast.success("Application submitted successfully! The client will be notified.");
       setApplicationText("");
-      navigate("/messages");
+      navigate("/freelancer/dashboard");
     } catch (error: any) {
       console.error("Error applying for job:", error);
       toast.error("Failed to submit application: " + error.message);
@@ -337,11 +459,18 @@ export default function JobDetail() {
 
           {isClient && (
             <Card>
-              <CardContent className="py-6 text-center">
-                <p className="text-gray-600">This is your job posting. You can view applications in your messages.</p>
-                <Button asChild className="mt-4">
-                  <Link to="/messages">View Messages</Link>
-                </Button>
+              <CardContent className="py-6 text-center space-y-4">
+                <p className="text-gray-600">This is your job posting.</p>
+                <div className="flex gap-3 justify-center">
+                  <Button asChild>
+                    <Link to={`/job/${slug}/applications`}>
+                      View Applications ({job.applications_count || 0})
+                    </Link>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link to="/messages">View Messages</Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -370,12 +499,12 @@ export default function JobDetail() {
                 <p className="text-sm text-gray-600 mb-4">{job.profiles.bio}</p>
               )}
               {!isClient && (
-                <Button variant="outline" className="w-full" asChild>
-                  <Link to={`/messages?user=${job.client_id}`}>
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Contact Client
-                  </Link>
-                </Button>
+              <Button variant="outline" className="w-full" asChild>
+                <Link to={`/messages?user=${(job as any).client_id}`}>
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Contact Client
+                </Link>
+              </Button>
               )}
             </CardContent>
           </Card>

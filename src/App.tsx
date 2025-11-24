@@ -13,6 +13,7 @@ import OrderDetail from "./pages/OrderDetail";
 import PaymentCallback from "./pages/PaymentCallback";
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
+import JobApplications from "./pages/JobApplications";
 import Profile from "./pages/Profile";
 import CreateGig from "./pages/CreateGig";
 import FreelancerDashboard from "./pages/FreelancerDashboard";
@@ -81,6 +82,16 @@ const App = () => (
             <Route path="/gig/:slug" element={<MarketplaceLayout><GigDetail /></MarketplaceLayout>} />
             <Route path="/jobs" element={<MarketplaceLayout><Jobs /></MarketplaceLayout>} />
             <Route path="/job/:slug" element={<MarketplaceLayout><JobDetail /></MarketplaceLayout>} />
+            <Route
+              path="/job/:slug/applications"
+              element={
+                <ProtectedRoute>
+                  <MarketplaceLayout>
+                    <JobApplications />
+                  </MarketplaceLayout>
+                </ProtectedRoute>
+              }
+            />
             <Route path="/payment/callback" element={<PaymentCallback />} />
             
             {/* Protected Routes */}
