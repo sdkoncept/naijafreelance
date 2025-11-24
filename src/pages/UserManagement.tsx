@@ -23,13 +23,13 @@ const editUserSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255, "Email must be less than 255 characters"),
 });
 
-type AppRole = "admin" | "staff" | "viewer";
+type UserType = "freelancer" | "client" | "admin";
 
 interface UserWithRole {
   id: string;
   email: string;
   full_name: string;
-  role: AppRole;
+  user_type: UserType | null;
   created_at: string;
 }
 
@@ -66,19 +66,12 @@ export default function UserManagement() {
 
       if (profilesError) throw profilesError;
 
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("*");
-
-      if (rolesError) throw rolesError;
-
       const usersWithRoles = profiles?.map(profile => {
-        const userRole = roles?.find(r => r.user_id === profile.id);
         return {
           id: profile.id,
           email: profile.email || "",
           full_name: profile.full_name,
-          role: (userRole?.role as AppRole) || "viewer",
+          user_type: (profile.user_type as UserType) || "client",
           created_at: profile.created_at,
         };
       }) || [];
@@ -91,34 +84,27 @@ export default function UserManagement() {
     }
   };
 
-  const updateUserRole = async (userId: string, newRole: AppRole) => {
+  const updateUserType = async (userId: string, newUserType: UserType) => {
     try {
-      // First check if role exists, then update or insert
-      const { data: existingRole } = await supabase
-        .from("user_roles")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ user_type: newUserType })
+        .eq("id", userId);
 
-      if (existingRole) {
-        const { error } = await supabase
-          .from("user_roles")
-          .update({ role: newRole as any })
-          .eq("user_id", userId);
-        
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("user_roles")
-          .insert({ user_id: userId, role: newRole } as any);
-        
-        if (error) throw error;
-      }
+      if (error) throw error;
 
-      toast.success("User role updated successfully");
+      await logAction({
+        action: "role_change",
+        table_name: "profiles",
+        record_id: userId,
+        old_data: { user_type: users.find(u => u.id === userId)?.user_type },
+        new_data: { user_type: newUserType },
+      });
+
+      toast.success("User type updated successfully");
       fetchUsers();
     } catch (error: any) {
-      toast.error("Failed to update role: " + error.message);
+      toast.error("Failed to update user type: " + error.message);
     }
   };
 
@@ -187,13 +173,13 @@ export default function UserManagement() {
     }
   };
 
-  const getRoleBadgeVariant = (role: AppRole) => {
-    switch (role) {
+  const getUserTypeBadgeVariant = (userType: UserType) => {
+    switch (userType) {
       case "admin":
         return "destructive";
-      case "staff":
+      case "freelancer":
         return "default";
-      case "viewer":
+      case "client":
         return "secondary";
     }
   };
@@ -215,8 +201,8 @@ export default function UserManagement() {
         <CardHeader>
           <CardTitle>User Management</CardTitle>
           <CardDescription>
-            Manage user roles and permissions. Admin can create/edit/delete all data. 
-            Staff can create/edit enrollee data. Viewer can only view data.
+            Manage user types and permissions. Admin has full access to all features.
+            Freelancers can create gigs and manage their services. Clients can browse and place orders.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -225,7 +211,7 @@ export default function UserManagement() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>User Type</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -239,21 +225,21 @@ export default function UserManagement() {
                   <TableCell>{userData.email}</TableCell>
                   <TableCell>
                     <Select
-                      value={userData.role}
-                      onValueChange={(value) => updateUserRole(userData.id, value as AppRole)}
+                      value={userData.user_type || "client"}
+                      onValueChange={(value) => updateUserType(userData.id, value as UserType)}
                       disabled={userData.id === user?.id}
                     >
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-36">
                         <SelectValue>
-                          <Badge variant={getRoleBadgeVariant(userData.role)}>
-                            {userData.role}
+                          <Badge variant={getUserTypeBadgeVariant(userData.user_type || "client")}>
+                            {userData.user_type || "client"}
                           </Badge>
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="staff">Staff</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
+                        <SelectItem value="freelancer">Freelancer</SelectItem>
+                        <SelectItem value="client">Client</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
