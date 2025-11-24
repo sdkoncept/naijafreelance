@@ -36,6 +36,7 @@ type AuditAction =
   | "job_update"
   | "job_close"
   | "job_cancel"
+  | "job_apply"
   // Messages
   | "message_sent"
   | "message_read"
