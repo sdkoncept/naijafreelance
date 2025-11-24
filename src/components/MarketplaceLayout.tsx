@@ -62,6 +62,14 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
               </Link>
               {user && (
                 <>
+                  {isFreelancer && (
+                    <Link
+                      to="/jobs"
+                      className="text-gray-700 hover:text-slate-700 transition-colors"
+                    >
+                      Jobs
+                    </Link>
+                  )}
                   {isAdmin && (
                     <>
                       <Link
@@ -266,6 +274,12 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
                               className="text-gray-700 hover:text-slate-700 transition-colors"
                             >
                               Dashboard
+                            </Link>
+                            <Link
+                              to="/jobs"
+                              className="text-gray-700 hover:text-slate-700 transition-colors"
+                            >
+                              Browse Jobs
                             </Link>
                             <Link
                               to="/freelancer/gigs/create"

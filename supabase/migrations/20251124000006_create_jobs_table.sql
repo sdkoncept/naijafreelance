@@ -54,7 +54,7 @@ END $$;
 -- Create policies
 CREATE POLICY "Jobs are publicly viewable"
   ON public.jobs FOR SELECT
-  USING (status = 'open' OR auth.uid() = client_id);
+  USING (status = 'open'); -- All authenticated users can view open jobs
 
 CREATE POLICY "Clients can create jobs"
   ON public.jobs FOR INSERT
