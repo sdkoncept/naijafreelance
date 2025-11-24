@@ -218,6 +218,7 @@ export default function AuditLogs() {
 
   const getActionIcon = (action: string) => {
     switch (action) {
+      // Authentication
       case "login":
         return <LogIn className="h-4 w-4" />;
       case "login_failed":
@@ -229,6 +230,41 @@ export default function AuditLogs() {
       case "password_change":
       case "password_reset_request":
         return <Key className="h-4 w-4" />;
+      // User Management
+      case "user_update":
+      case "profile_update":
+        return <FileEdit className="h-4 w-4" />;
+      case "user_type_change":
+        return <Shield className="h-4 w-4" />;
+      case "user_delete":
+        return <Trash2 className="h-4 w-4" />;
+      // Gigs
+      case "gig_create":
+        return <UserCheck className="h-4 w-4" />;
+      case "gig_update":
+      case "gig_activate":
+        return <FileEdit className="h-4 w-4" />;
+      case "gig_delete":
+      case "gig_pause":
+        return <Trash2 className="h-4 w-4" />;
+      // Orders
+      case "order_create":
+        return <UserCheck className="h-4 w-4" />;
+      case "order_update":
+      case "order_status_change":
+      case "order_complete":
+        return <FileEdit className="h-4 w-4" />;
+      case "order_cancel":
+        return <Trash2 className="h-4 w-4" />;
+      // Payments
+      case "payment_initiated":
+      case "payment_completed":
+        return <CreditCard className="h-4 w-4" />;
+      case "payment_failed":
+        return <CreditCard className="h-4 w-4 text-destructive" />;
+      case "payment_refunded":
+        return <CreditCard className="h-4 w-4" />;
+      // Legacy
       case "enrollee_create":
       case "dependant_create":
         return <UserCheck className="h-4 w-4" />;
@@ -241,7 +277,6 @@ export default function AuditLogs() {
       case "payment_verify":
         return <CreditCard className="h-4 w-4" />;
       case "role_change":
-      case "user_delete":
         return <Shield className="h-4 w-4" />;
       default:
         return <Shield className="h-4 w-4" />;
@@ -249,10 +284,10 @@ export default function AuditLogs() {
   };
 
   const getActionVariant = (action: string): "default" | "secondary" | "destructive" | "outline" => {
-    if (action === "login_failed") return "destructive";
-    if (action.includes("delete")) return "destructive";
-    if (action.includes("create") || action === "signup") return "default";
-    if (action.includes("update") || action.includes("login")) return "secondary";
+    if (action === "login_failed" || action === "payment_failed") return "destructive";
+    if (action.includes("delete") || action.includes("cancel")) return "destructive";
+    if (action.includes("create") || action === "signup" || action === "payment_completed" || action === "order_complete") return "default";
+    if (action.includes("update") || action.includes("login") || action.includes("change") || action.includes("status")) return "secondary";
     return "outline";
   };
 

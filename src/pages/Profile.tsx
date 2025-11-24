@@ -80,6 +80,32 @@ export default function Profile() {
 
       if (error) throw error;
 
+      // Log profile update
+      try {
+        await supabase.from("audit_logs").insert([{
+          user_id: user.id,
+          action: "profile_update",
+          table_name: "profiles",
+          record_id: user.id,
+          old_data: {
+            full_name: profile?.full_name,
+            phone: profile?.phone,
+            bio: profile?.bio,
+            location: profile?.location,
+            user_type: profile?.user_type,
+          },
+          new_data: {
+            full_name: formData.full_name,
+            phone: formData.phone,
+            bio: formData.bio,
+            location: formData.location,
+            user_type: formData.user_type,
+          },
+        }]);
+      } catch (logError) {
+        console.error("Error logging profile update:", logError);
+      }
+
       toast.success("Profile updated successfully!");
       await refreshProfile();
     } catch (error: any) {

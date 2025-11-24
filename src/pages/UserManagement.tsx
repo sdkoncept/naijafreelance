@@ -94,7 +94,7 @@ export default function UserManagement() {
       if (error) throw error;
 
       await logAction({
-        action: "role_change",
+        action: "user_type_change",
         table_name: "profiles",
         record_id: userId,
         old_data: { user_type: users.find(u => u.id === userId)?.user_type },
@@ -137,7 +137,7 @@ export default function UserManagement() {
       if (error) throw error;
 
       await logAction({
-        action: "enrollee_update",
+        action: "user_update",
         table_name: "profiles",
         record_id: editingUser.id,
         old_data: oldData,

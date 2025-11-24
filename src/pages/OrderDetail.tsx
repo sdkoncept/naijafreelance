@@ -162,6 +162,33 @@ export default function OrderDetail() {
 
       if (updateError) throw updateError;
 
+      // Log payment and order status change
+      try {
+        await supabase.from("audit_logs").insert([
+          {
+            user_id: user?.id,
+            action: "payment_completed",
+            table_name: "payments",
+            record_id: order.id,
+            new_data: {
+              gateway_reference: reference,
+              amount: order.price,
+              status: "completed",
+            },
+          },
+          {
+            user_id: user?.id,
+            action: "order_status_change",
+            table_name: "orders",
+            record_id: order.id,
+            old_data: { status: order.status },
+            new_data: { status: "in_progress" },
+          },
+        ]);
+      } catch (logError) {
+        console.error("Error logging payment:", logError);
+      }
+
       toast.success("Payment successful! Your order is now in progress.");
       fetchOrderDetails(); // Refresh order data
     } catch (error: any) {

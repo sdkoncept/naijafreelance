@@ -227,6 +227,25 @@ export default function GigDetail() {
             }
           });
 
+        // Log order creation
+        try {
+          await supabase.from("audit_logs").insert([{
+            user_id: user.id,
+            action: "order_create",
+            table_name: "orders",
+            record_id: order.id,
+            new_data: {
+              order_number: order.order_number,
+              gig_id: gig.id,
+              package_type: selectedPackage,
+              price: price,
+              status: "pending",
+            },
+          }]);
+        } catch (logError) {
+          console.error("Error logging order creation:", logError);
+        }
+
         toast.success("Order created successfully!");
       } else {
         toast.error("Order created but no data returned");
@@ -267,6 +286,33 @@ export default function GigDetail() {
         .eq("id", createdOrder.id);
 
       if (updateError) throw updateError;
+
+      // Log payment and order status change
+      try {
+        await supabase.from("audit_logs").insert([
+          {
+            user_id: user.id,
+            action: "payment_completed",
+            table_name: "payments",
+            record_id: createdOrder.id,
+            new_data: {
+              gateway_reference: reference,
+              amount: createdOrder.price,
+              status: "completed",
+            },
+          },
+          {
+            user_id: user.id,
+            action: "order_status_change",
+            table_name: "orders",
+            record_id: createdOrder.id,
+            old_data: { status: "pending" },
+            new_data: { status: "in_progress" },
+          },
+        ]);
+      } catch (logError) {
+        console.error("Error logging payment:", logError);
+      }
 
       toast.success("Payment successful! Your order is now in progress.");
       setShowOrderDialog(false);

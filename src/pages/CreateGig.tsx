@@ -189,6 +189,23 @@ export default function CreateGig() {
 
       if (error) throw error;
 
+      // Log gig creation
+      try {
+        await supabase.from("audit_logs").insert([{
+          user_id: user.id,
+          action: "gig_create",
+          table_name: "gigs",
+          record_id: data.id,
+          new_data: {
+            title: gigData.title,
+            category_id: gigData.category_id,
+            status: gigData.status,
+          },
+        }]);
+      } catch (logError) {
+        console.error("Error logging gig creation:", logError);
+      }
+
       toast.success("Gig created successfully!");
       navigate(`/freelancer/dashboard`);
     } catch (error: any) {

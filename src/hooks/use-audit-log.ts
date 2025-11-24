@@ -2,12 +2,43 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 type AuditAction = 
+  // Authentication
   | "login"
   | "login_failed"
   | "logout"
   | "signup"
   | "password_change"
   | "password_reset_request"
+  // User Management
+  | "user_update"
+  | "user_type_change"
+  | "user_delete"
+  | "profile_update"
+  // Gigs
+  | "gig_create"
+  | "gig_update"
+  | "gig_delete"
+  | "gig_pause"
+  | "gig_activate"
+  // Orders
+  | "order_create"
+  | "order_update"
+  | "order_status_change"
+  | "order_cancel"
+  | "order_complete"
+  // Payments
+  | "payment_initiated"
+  | "payment_completed"
+  | "payment_failed"
+  | "payment_refunded"
+  // Messages
+  | "message_sent"
+  | "message_read"
+  // Reviews
+  | "review_create"
+  | "review_update"
+  | "review_delete"
+  // Legacy (for backward compatibility)
   | "enrollee_create"
   | "enrollee_update"
   | "enrollee_delete"
@@ -15,8 +46,7 @@ type AuditAction =
   | "dependant_update"
   | "dependant_delete"
   | "payment_verify"
-  | "role_change"
-  | "user_delete";
+  | "role_change";
 
 interface AuditLogData {
   action: AuditAction;
