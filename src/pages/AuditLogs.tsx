@@ -11,7 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router-dom";
-import { Search, Shield, UserCheck, FileEdit, Trash2, LogIn, LogOut, UserPlus, Key, CreditCard, Download, ChevronDown, Calendar } from "lucide-react";
+import { Search, Shield, UserCheck, FileEdit, Trash2, LogIn, LogOut, UserPlus, Key, CreditCard, Download, ChevronDown, Calendar, CheckCircle, XCircle, MessageCircle } from "lucide-react";
 import { format } from "date-fns";
 
 interface AuditLog {
