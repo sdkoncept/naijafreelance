@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import CreateGig from "./pages/CreateGig";
 import FreelancerDashboard from "./pages/FreelancerDashboard";
 import ClientOrders from "./pages/ClientOrders";
+import MyGigs from "./pages/MyGigs";
 import PostJob from "./pages/PostJob";
 import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
@@ -25,6 +26,11 @@ import Earnings from "./pages/Earnings";
 import UserManagement from "./pages/UserManagement";
 import AuditLogs from "./pages/AuditLogs";
 import PaystackTest from "./pages/PaystackTest";
+import HowItWorks from "./pages/HowItWorks";
+import HelpCenter from "./pages/HelpCenter";
+import ContactUs from "./pages/ContactUs";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MarketplaceLayout from "./components/MarketplaceLayout";
 import NotFound from "./pages/NotFound";
@@ -95,6 +101,13 @@ const App = () => (
             />
             <Route path="/payment/callback" element={<PaymentCallback />} />
             <Route path="/paystack-test" element={<MarketplaceLayout><PaystackTest /></MarketplaceLayout>} />
+            
+            {/* Public Information Pages */}
+            <Route path="/how-it-works" element={<MarketplaceLayout><HowItWorks /></MarketplaceLayout>} />
+            <Route path="/help" element={<MarketplaceLayout><HelpCenter /></MarketplaceLayout>} />
+            <Route path="/contact" element={<MarketplaceLayout><ContactUs /></MarketplaceLayout>} />
+            <Route path="/terms" element={<MarketplaceLayout><TermsOfService /></MarketplaceLayout>} />
+            <Route path="/privacy" element={<MarketplaceLayout><PrivacyPolicy /></MarketplaceLayout>} />
             
             {/* Protected Routes */}
             <Route
@@ -167,6 +180,16 @@ const App = () => (
                 <ProtectedRoute>
                   <MarketplaceLayout>
                     <ClientOrders />
+                  </MarketplaceLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-gigs"
+              element={
+                <ProtectedRoute>
+                  <MarketplaceLayout>
+                    <MyGigs />
                   </MarketplaceLayout>
                 </ProtectedRoute>
               }

@@ -292,16 +292,26 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
                         {isClient && (
                           <>
                             <Link
-                              to="/client/orders"
+                              to="/my-gigs"
                               className="text-gray-700 hover:text-slate-700 transition-colors"
                             >
-                              My Orders
+                              My Gigs
                             </Link>
                             <Link
                               to="/post-job"
                               className="text-gray-700 hover:text-slate-700 transition-colors"
                             >
                               Post a Job
+                            </Link>
+                          </>
+                        )}
+                        {isFreelancer && (
+                          <>
+                            <Link
+                              to="/my-gigs"
+                              className="text-gray-700 hover:text-slate-700 transition-colors"
+                            >
+                              My Gigs
                             </Link>
                           </>
                         )}

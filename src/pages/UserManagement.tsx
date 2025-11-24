@@ -43,6 +43,10 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [pendingUserTypeChange, setPendingUserTypeChange] = useState<{ userId: string; newType: UserType; oldType: UserType | null } | null>(null);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [pendingProfileEdit, setPendingProfileEdit] = useState<EditUserForm | null>(null);
+  const [isEditConfirmDialogOpen, setIsEditConfirmDialogOpen] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<EditUserForm>({
     resolver: zodResolver(editUserSchema),
@@ -84,27 +88,45 @@ export default function UserManagement() {
     }
   };
 
-  const updateUserType = async (userId: string, newUserType: UserType) => {
+  const handleUserTypeChange = (userId: string, newUserType: UserType) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    setPendingUserTypeChange({
+      userId,
+      newType: newUserType,
+      oldType: user.user_type,
+    });
+    setIsConfirmDialogOpen(true);
+  };
+
+  const confirmUserTypeChange = async () => {
+    if (!pendingUserTypeChange) return;
+
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ user_type: newUserType })
-        .eq("id", userId);
+        .update({ user_type: pendingUserTypeChange.newType })
+        .eq("id", pendingUserTypeChange.userId);
 
       if (error) throw error;
 
       await logAction({
         action: "user_type_change",
         table_name: "profiles",
-        record_id: userId,
-        old_data: { user_type: users.find(u => u.id === userId)?.user_type },
-        new_data: { user_type: newUserType },
+        record_id: pendingUserTypeChange.userId,
+        old_data: { user_type: pendingUserTypeChange.oldType },
+        new_data: { user_type: pendingUserTypeChange.newType },
       });
 
       toast.success("User type updated successfully");
+      setIsConfirmDialogOpen(false);
+      setPendingUserTypeChange(null);
       fetchUsers();
     } catch (error: any) {
       toast.error("Failed to update user type: " + error.message);
+      setIsConfirmDialogOpen(false);
+      setPendingUserTypeChange(null);
     }
   };
 
@@ -120,6 +142,14 @@ export default function UserManagement() {
   const onEditSubmit = async (data: EditUserForm) => {
     if (!editingUser) return;
 
+    // Store the pending changes and show confirmation
+    setPendingProfileEdit(data);
+    setIsEditConfirmDialogOpen(true);
+  };
+
+  const confirmProfileEdit = async () => {
+    if (!editingUser || !pendingProfileEdit) return;
+
     try {
       const oldData = {
         full_name: editingUser.full_name,
@@ -129,8 +159,8 @@ export default function UserManagement() {
       const { error } = await supabase
         .from("profiles")
         .update({
-          full_name: data.full_name,
-          email: data.email,
+          full_name: pendingProfileEdit.full_name,
+          email: pendingProfileEdit.email,
         })
         .eq("id", editingUser.id);
 
@@ -141,14 +171,18 @@ export default function UserManagement() {
         table_name: "profiles",
         record_id: editingUser.id,
         old_data: oldData,
-        new_data: data,
+        new_data: pendingProfileEdit,
       });
 
       toast.success("User details updated successfully");
       setIsEditDialogOpen(false);
+      setIsEditConfirmDialogOpen(false);
+      setPendingProfileEdit(null);
       fetchUsers();
     } catch (error: any) {
       toast.error("Failed to update user: " + error.message);
+      setIsEditConfirmDialogOpen(false);
+      setPendingProfileEdit(null);
     }
   };
 
@@ -226,7 +260,7 @@ export default function UserManagement() {
                   <TableCell>
                     <Select
                       value={userData.user_type || "client"}
-                      onValueChange={(value) => updateUserType(userData.id, value as UserType)}
+                      onValueChange={(value) => handleUserTypeChange(userData.id, value as UserType)}
                       disabled={userData.id === user?.id}
                     >
                       <SelectTrigger className="w-36">
@@ -333,6 +367,82 @@ export default function UserManagement() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog for User Type Change */}
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm User Type Change</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingUserTypeChange && (
+                <>
+                  Are you sure you want to change this user's type from{" "}
+                  <strong>{pendingUserTypeChange.oldType || "client"}</strong> to{" "}
+                  <strong>{pendingUserTypeChange.newType}</strong>?
+                  <br />
+                  <br />
+                  This will immediately update the user's permissions and access level.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsConfirmDialogOpen(false);
+              setPendingUserTypeChange(null);
+              fetchUsers(); // Refresh to reset the select
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmUserTypeChange}>
+              Confirm Change
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmation Dialog for Profile Edit */}
+      <AlertDialog open={isEditConfirmDialogOpen} onOpenChange={setIsEditConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Profile Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              {editingUser && pendingProfileEdit && (
+                <>
+                  Are you sure you want to update this user's profile?
+                  <br />
+                  <br />
+                  <div className="space-y-2 mt-2">
+                    {editingUser.full_name !== pendingProfileEdit.full_name && (
+                      <div>
+                        <strong>Name:</strong> {editingUser.full_name} → {pendingProfileEdit.full_name}
+                      </div>
+                    )}
+                    {editingUser.email !== pendingProfileEdit.email && (
+                      <div>
+                        <strong>Email:</strong> {editingUser.email} → {pendingProfileEdit.email}
+                      </div>
+                    )}
+                  </div>
+                  <br />
+                  These changes will be applied immediately.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsEditConfirmDialogOpen(false);
+              setPendingProfileEdit(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmProfileEdit}>
+              Confirm Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

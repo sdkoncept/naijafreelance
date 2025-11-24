@@ -9,6 +9,10 @@ import { ArrowLeft, Calendar, DollarSign, Package, User, FileText, CheckCircle, 
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import PaystackPayment from "@/components/PaystackPayment";
+import FeedbackForm from "@/components/FeedbackForm";
+import OrderProgressTimeline from "@/components/OrderProgressTimeline";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuditLog } from "@/hooks/use-audit-log";
 
 interface Order {
   id: string;
@@ -22,6 +26,9 @@ interface Order {
   status: string;
   requirements: string | null;
   delivery_date: string | null;
+  delivered_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
   created_at: string;
   gigs: {
     title: string;
@@ -46,8 +53,11 @@ export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { logAction } = useAuditLog();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [closingOrder, setClosingOrder] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -131,6 +141,62 @@ export default function OrderDetail() {
         {status.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
       </Badge>
     );
+  };
+
+  const handleCloseGig = async () => {
+    if (!order || !user) return;
+
+    // Check if feedback already exists
+    const { data: existingReview } = await supabase
+      .from("reviews")
+      .select("id")
+      .eq("order_id", order.id)
+      .single();
+
+    if (existingReview) {
+      // If feedback exists, just close the order
+      await closeOrderWithoutFeedback();
+    } else {
+      // Show feedback form (user can submit feedback, then order will be closed)
+      setShowFeedbackDialog(true);
+    }
+  };
+
+  const closeOrderWithoutFeedback = async () => {
+    if (!order || !user) return;
+
+    setClosingOrder(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      // Log the action
+      await logAction("order_status_change", "orders", order.id, {
+        old_data: { status: order.status },
+        new_data: { status: "completed" },
+      });
+
+      toast.success("Gig closed successfully!");
+      fetchOrderDetails(); // Refresh order data
+    } catch (error: any) {
+      console.error("Error closing order:", error);
+      toast.error("Failed to close gig: " + error.message);
+    } finally {
+      setClosingOrder(false);
+    }
+  };
+
+  const handleFeedbackSuccess = async () => {
+    // Feedback form already closes the order, just close dialog and refresh
+    setShowFeedbackDialog(false);
+    fetchOrderDetails(); // Refresh to show updated status
   };
 
   const handlePaymentSuccess = async (reference: string) => {
@@ -339,6 +405,16 @@ export default function OrderDetail() {
           />
         ) : null}
 
+        {/* Order Progress Timeline */}
+        <OrderProgressTimeline
+          status={order.status}
+          payment={order.payment}
+          created_at={order.created_at}
+          delivered_at={order.delivered_at || null}
+          completed_at={order.completed_at || null}
+          cancelled_at={order.cancelled_at || null}
+        />
+
         {/* Requirements */}
         {order.requirements && (
           <Card>
@@ -429,24 +505,53 @@ export default function OrderDetail() {
           </Card>
         )}
 
-        {isClient && order.status === "delivered" && (
+        {isClient && (order.status === "delivered" || order.status === "in_progress") && (
           <Card>
             <CardHeader>
               <CardTitle>Order Actions</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex gap-2 flex-wrap">
-                <Button className="flex-1 sm:flex-none">
-                  Accept & Complete
+                <Button 
+                  className="flex-1 sm:flex-none"
+                  onClick={handleCloseGig}
+                  disabled={closingOrder}
+                >
+                  {closingOrder ? "Closing..." : "Close Gig"}
                 </Button>
-                <Button variant="outline" className="flex-1 sm:flex-none">
-                  Request Revision
-                </Button>
+                {order.status === "delivered" && (
+                  <Button variant="outline" className="flex-1 sm:flex-none">
+                    Request Revision
+                  </Button>
+                )}
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Closing the gig will mark it as completed. You'll be asked to provide feedback.
+              </p>
             </CardContent>
           </Card>
         )}
       </div>
+
+      {/* Feedback Dialog */}
+      {order && (
+        <Dialog open={showFeedbackDialog} onOpenChange={setShowFeedbackDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Close Gig & Leave Feedback</DialogTitle>
+              <DialogDescription>
+                Please share your experience before closing this gig. Your feedback helps the freelancer improve and helps other clients make decisions.
+              </DialogDescription>
+            </DialogHeader>
+            <FeedbackForm
+              orderId={order.id}
+              freelancerId={order.freelancer_id}
+              onSuccess={handleFeedbackSuccess}
+              onCancel={() => setShowFeedbackDialog(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -12,6 +12,7 @@ interface PaystackPaymentProps {
   orderNumber: string;
   onSuccess: (reference: string) => void;
   onCancel?: () => void;
+  onPaymentInitiated?: () => void; // Called when payment popup opens
 }
 
 export default function PaystackPayment({
@@ -21,6 +22,7 @@ export default function PaystackPayment({
   orderNumber,
   onSuccess,
   onCancel,
+  onPaymentInitiated,
 }: PaystackPaymentProps) {
   const [loading, setLoading] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -29,33 +31,14 @@ export default function PaystackPayment({
   // Get the key - Vite will replace this at build time
   const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
 
-  // IMMEDIATE debug logging - runs on every render
-  console.log("🚀 PaystackPayment Component Loaded!");
-  console.log("🔑 PAYSTACK_PUBLIC_KEY:", PAYSTACK_PUBLIC_KEY);
-  console.log("🔑 import.meta.env.VITE_PAYSTACK_PUBLIC_KEY:", import.meta.env.VITE_PAYSTACK_PUBLIC_KEY);
-  console.log("📦 Full import.meta.env:", import.meta.env);
-
   useEffect(() => {
-    // Debug logging - visible in console
-    const envKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
-    console.log("🔍 Paystack Debug (useEffect):", {
-      PAYSTACK_PUBLIC_KEY,
-      envKey,
-      "typeof PAYSTACK_PUBLIC_KEY": typeof PAYSTACK_PUBLIC_KEY,
-      "typeof envKey": typeof envKey,
-      "isUndefined": PAYSTACK_PUBLIC_KEY === undefined || envKey === undefined,
-      "isEmpty": !PAYSTACK_PUBLIC_KEY || PAYSTACK_PUBLIC_KEY === "",
-      "allEnvKeys": Object.keys(import.meta.env).filter(k => k.includes("PAYSTACK") || k.includes("VITE"))
-    });
-
     // Check if key exists
-    const keyToUse = PAYSTACK_PUBLIC_KEY || envKey;
+    const keyToUse = PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
     
     if (!keyToUse || keyToUse === "") {
       const errorMsg = "Paystack public key not configured. Please add VITE_PAYSTACK_PUBLIC_KEY to your .env file.";
       console.error("❌ Paystack Error:", errorMsg);
       console.error("PAYSTACK_PUBLIC_KEY value:", PAYSTACK_PUBLIC_KEY);
-      console.error("envKey value:", envKey);
       console.error("Full import.meta.env:", import.meta.env);
       setError(errorMsg);
       return;
@@ -104,6 +87,11 @@ export default function PaystackPayment({
     try {
       // Generate unique reference
       const reference = `ORDER-${orderId}-${Date.now()}`;
+
+      // Close dialog/modal before opening Paystack popup
+      if (onPaymentInitiated) {
+        onPaymentInitiated();
+      }
 
       // Initialize Paystack payment
       const keyToUse = PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";

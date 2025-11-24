@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Send, MessageSquare, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface Message {
   id: string;
@@ -31,11 +31,20 @@ interface Message {
 export default function Messages() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Check if user parameter is in URL (for direct messaging)
+  useEffect(() => {
+    const userId = searchParams.get("user");
+    if (userId && user?.id && userId !== user.id) {
+      setSelectedConversation(userId);
+    }
+  }, [searchParams, user]);
 
   useEffect(() => {
     if (!user) {
@@ -44,6 +53,27 @@ export default function Messages() {
     }
 
     fetchMessages();
+    
+    // Set up real-time subscription for new messages
+    const channel = supabase
+      .channel("messages")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `sender_id=eq.${user.id},receiver_id=eq.${user.id}`,
+        },
+        () => {
+          fetchMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, navigate]);
 
   const fetchMessages = async () => {
@@ -100,12 +130,29 @@ export default function Messages() {
 
     setSending(true);
     try {
-      // For now, just show a message that messaging will be implemented
-      toast.info("Messaging feature coming soon! Messages will be stored and synced in real-time.");
+      const { data, error } = await supabase
+        .from("messages")
+        .insert({
+          sender_id: user.id,
+          receiver_id: selectedConversation,
+          content: newMessage.trim(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Refresh messages to show the new one
+      await fetchMessages();
       setNewMessage("");
+      toast.success("Message sent!");
     } catch (error: any) {
       console.error("Error sending message:", error);
-      toast.error("Failed to send message");
+      if (error.code === "PGRST205") {
+        toast.error("Messaging table not available. Please run the migration.");
+      } else {
+        toast.error("Failed to send message: " + error.message);
+      }
     } finally {
       setSending(false);
     }

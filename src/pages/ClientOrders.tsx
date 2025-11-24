@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Package, Calendar, DollarSign } from "lucide-react";
+import { Search, Package, Calendar, DollarSign, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 
@@ -237,7 +237,12 @@ export default function ClientOrders() {
                   </div>
                   <div className="flex gap-2 ml-4">
                     <Button asChild variant="outline" size="sm">
-                      <Link to={`/order/${order.id}`}>View Details</Link>
+                      <Link to={`/order/${order.id}`}>Track Order</Link>
+                    </Button>
+                    <Button asChild variant="ghost" size="sm" title="Message Freelancer">
+                      <Link to={`/messages?user=${order.freelancer_id}`}>
+                        <MessageSquare className="h-4 w-4" />
+                      </Link>
                     </Button>
                   </div>
                 </div>

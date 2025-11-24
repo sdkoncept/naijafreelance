@@ -679,6 +679,10 @@ export default function GigDetail() {
                 orderId={createdOrder.id}
                 orderNumber={createdOrder.order_number}
                 onSuccess={handlePaymentSuccess}
+                onPaymentInitiated={() => {
+                  // Close the dialog when Paystack popup opens
+                  setShowOrderDialog(false);
+                }}
                 onCancel={() => {
                   setShowOrderDialog(false);
                   navigate(`/order/${createdOrder.id}`);

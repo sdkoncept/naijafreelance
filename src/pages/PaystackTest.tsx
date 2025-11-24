@@ -1,10 +1,6 @@
 export default function PaystackTest() {
   const key = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
   
-  console.log("🧪 PaystackTest Page Loaded!");
-  console.log("🔑 Key from import.meta.env:", key);
-  console.log("📦 Full import.meta.env:", import.meta.env);
-  
   return (
     <div className="container mx-auto p-8">
       <h1 className="text-3xl font-bold mb-4">Paystack Key Test</h1>
