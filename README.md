@@ -2,17 +2,12 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/4dfb9921-c4bb-4620-955a-336aab5da215
+**URL**: https://naijafreelance.sdkoncept.com
 
 ## How can I edit this code?
 
 There are several ways of editing your application.
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/4dfb9921-c4bb-4620-955a-336aab5da215) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
 
 **Use your preferred IDE**
 
@@ -105,5 +100,3 @@ For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 Yes, you can!
 
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
