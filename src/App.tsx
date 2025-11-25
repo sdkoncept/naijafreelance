@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/use-auth";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import Browse from "./pages/Browse";
@@ -20,17 +21,22 @@ import FreelancerDashboard from "./pages/FreelancerDashboard";
 import ClientOrders from "./pages/ClientOrders";
 import MyGigs from "./pages/MyGigs";
 import PostJob from "./pages/PostJob";
+import BillingPayments from "./pages/BillingPayments";
 import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
 import Earnings from "./pages/Earnings";
 import UserManagement from "./pages/UserManagement";
 import AuditLogs from "./pages/AuditLogs";
+import DisputeCenter from "./pages/DisputeCenter";
 import PaystackTest from "./pages/PaystackTest";
 import HowItWorks from "./pages/HowItWorks";
 import HelpCenter from "./pages/HelpCenter";
 import ContactUs from "./pages/ContactUs";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Community from "./pages/Community";
+import Notifications from "./pages/Notifications";
+import LogoCreator from "./pages/LogoCreator";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MarketplaceLayout from "./components/MarketplaceLayout";
 import NotFound from "./pages/NotFound";
@@ -84,6 +90,7 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/" element={<MarketplaceLayout><Home /></MarketplaceLayout>} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/browse" element={<MarketplaceLayout><Browse /></MarketplaceLayout>} />
             <Route path="/gig/:slug" element={<MarketplaceLayout><GigDetail /></MarketplaceLayout>} />
@@ -140,6 +147,16 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <MarketplaceLayout>
+                    <Notifications />
+                  </MarketplaceLayout>
+                </ProtectedRoute>
+              }
+            />
             
             {/* Freelancer Routes */}
             <Route
@@ -168,6 +185,16 @@ const App = () => (
                 <ProtectedRoute>
                   <MarketplaceLayout>
                     <Earnings />
+                  </MarketplaceLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/community"
+              element={
+                <ProtectedRoute>
+                  <MarketplaceLayout>
+                    <Community />
                   </MarketplaceLayout>
                 </ProtectedRoute>
               }
@@ -214,6 +241,26 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/client/billing"
+              element={
+                <ProtectedRoute>
+                  <MarketplaceLayout>
+                    <BillingPayments />
+                  </MarketplaceLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/logo-creator"
+              element={
+                <ProtectedRoute>
+                  <MarketplaceLayout>
+                    <LogoCreator />
+                  </MarketplaceLayout>
+                </ProtectedRoute>
+              }
+            />
             
             {/* Admin Routes */}
             <Route
@@ -232,6 +279,16 @@ const App = () => (
                 <ProtectedRoute>
                   <MarketplaceLayout>
                     <AuditLogs />
+                  </MarketplaceLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/disputes"
+              element={
+                <ProtectedRoute>
+                  <MarketplaceLayout>
+                    <DisputeCenter />
                   </MarketplaceLayout>
                 </ProtectedRoute>
               }

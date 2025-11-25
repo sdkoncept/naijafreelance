@@ -8,10 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Star, Clock, TrendingUp, ArrowLeft, Check, MessageCircle } from "lucide-react";
+import { Star, Clock, TrendingUp, ArrowLeft, Check, MessageCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import PaystackPayment from "@/components/PaystackPayment";
+import { notifyOrderReceived } from "@/utils/notifications";
+import ReviewsDisplay from "@/components/ReviewsDisplay";
 
 interface Gig {
   id: string;
@@ -49,20 +51,67 @@ interface Gig {
 export default function GigDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [gig, setGig] = useState<Gig | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<"basic" | "standard" | "premium" | null>(null);
   const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [orderRequirements, setOrderRequirements] = useState("");
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<{ id: string; order_number: string; price: number } | null>(null);
+  const [sendingVerificationRequest, setSendingVerificationRequest] = useState(false);
 
   useEffect(() => {
     if (slug) {
       fetchGigDetails();
     }
   }, [slug]);
+
+  // Listen for verification status changes in real-time
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Set up real-time subscription for profile verification status changes
+    const channel = supabase
+      .channel(`profile-verification-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${user.id}`,
+        },
+        async (payload) => {
+          const newStatus = (payload.new as any)?.verification_status;
+          const oldStatus = (payload.old as any)?.verification_status;
+
+          // Check if verification status changed to "verified"
+          if (newStatus === "verified" && oldStatus !== "verified") {
+            console.log("Verification status changed to verified!");
+            
+            // Refresh profile data
+            await refreshProfile();
+            
+            // Show success message
+            toast.success("Your account has been verified! You can now complete your purchase.", {
+              duration: 5000,
+            });
+
+            // Reload the page after a short delay to ensure profile is refreshed
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, refreshProfile]);
 
   const fetchGigDetails = async () => {
     try {
@@ -134,12 +183,103 @@ export default function GigDetail() {
       return;
     }
 
+    // Check if client is verified - show verification dialog instead of error
+    if (profile?.user_type === "client" && profile?.verification_status !== "verified") {
+      setShowVerificationDialog(true);
+      return;
+    }
+
     setShowOrderDialog(true);
+  };
+
+  const handleRequestVerification = async () => {
+    if (!user || !profile) return;
+
+    setSendingVerificationRequest(true);
+    try {
+      // Find all admin users - try both user_roles and profiles tables
+      let adminIds: string[] = [];
+
+      // First, try to get admins from user_roles table
+      const { data: adminRoles, error: adminError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      if (adminError) {
+        console.log("Could not access user_roles table (RLS may be blocking):", adminError.message);
+      } else if (adminRoles && adminRoles.length > 0) {
+        adminIds = adminRoles.map((role) => role.user_id);
+        console.log(`Found ${adminIds.length} admin(s) from user_roles table`);
+      }
+
+      // If no admins found in user_roles, check profiles table for user_type = 'admin'
+      if (adminIds.length === 0) {
+        console.log("Checking profiles table for admins...");
+        const { data: adminProfiles, error: profileError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_type", "admin");
+
+        if (profileError) {
+          console.error("Error fetching admin profiles:", profileError);
+        } else if (adminProfiles && adminProfiles.length > 0) {
+          adminIds = adminProfiles.map((p) => p.id);
+          console.log(`Found ${adminIds.length} admin(s) from profiles table`);
+        } else {
+          console.log("No admin profiles found with user_type = 'admin'");
+        }
+      }
+
+      // If still no admins found, show error
+      if (adminIds.length === 0) {
+        console.error("No admin users found in user_roles or profiles tables");
+        toast.error("No admin users found. Please contact support directly or ensure an admin account exists.");
+        setSendingVerificationRequest(false);
+        return;
+      }
+      const messageContent = `Hello Admin,\n\nI would like to request account verification.\n\nName: ${profile.full_name}\nEmail: ${profile.email || user.email}\nUser ID: ${user.id}\n\nPlease verify my account so I can purchase gigs on the platform.\n\nThank you!`;
+
+      const messagesToSend = adminIds.map((adminId) => ({
+        sender_id: user.id,
+        receiver_id: adminId,
+        content: messageContent,
+      }));
+
+      const { error: messageError } = await supabase
+        .from("messages")
+        .insert(messagesToSend);
+
+      if (messageError) {
+        console.error("Error sending verification request:", messageError);
+        if (messageError.code === "PGRST205") {
+          toast.error("Messaging system not available. Please contact support directly.");
+        } else {
+          toast.error("Failed to send verification request. Please try again or contact support.");
+        }
+        setSendingVerificationRequest(false);
+        return;
+      }
+
+      toast.success(`Verification request sent to ${adminIds.length} admin(s). They will review your account shortly.`);
+      setShowVerificationDialog(false);
+    } catch (error: any) {
+      console.error("Error requesting verification:", error);
+      toast.error("Failed to send verification request. Please try again.");
+    } finally {
+      setSendingVerificationRequest(false);
+    }
   };
 
   const createOrder = async () => {
     if (!user || !gig || !selectedPackage) {
       toast.error("Missing required information");
+      return;
+    }
+
+    // Double-check verification status before creating order
+    if (profile?.user_type === "client" && profile?.verification_status !== "verified") {
+      toast.error("Your account needs to be verified before you can purchase gigs. Please contact an admin for verification.");
       return;
     }
 
@@ -216,6 +356,14 @@ export default function GigDetail() {
 
       if (order) {
         setCreatedOrder(order);
+        
+        // Notify freelancer about new order
+        if (profile?.full_name) {
+          notifyOrderReceived(gig.freelancer_id, order.id, profile.full_name).catch(
+            (err) => console.error("Failed to send notification:", err)
+          );
+        }
+        
         // Update gig orders count (non-blocking)
         supabase
           .from("gigs")
@@ -262,18 +410,24 @@ export default function GigDetail() {
     if (!createdOrder) return;
 
     try {
-      // Create payment record
+      // Calculate total amount paid (including fees)
+      // Fees: 1.5% platform fee + ₦100 processing fee
+      const platformFee = createdOrder.price * 0.015;
+      const processingFee = 100;
+      const totalAmountPaid = createdOrder.price + platformFee + processingFee;
+
+      // Create payment record with actual amount paid
       const { error: paymentError } = await supabase
         .from("payments")
         .insert({
           order_id: createdOrder.id,
-          amount: createdOrder.price,
+          amount: totalAmountPaid, // Record the actual amount paid (including fees)
           currency: "NGN",
           payment_gateway: "paystack",
           gateway_reference: reference,
           status: "completed",
-          commission_amount: createdOrder.price * 0.20,
-          freelancer_payout_amount: createdOrder.price * 0.80,
+          commission_amount: createdOrder.price * 0.20, // Commission on service price
+          freelancer_payout_amount: createdOrder.price * 0.80, // Payout on service price
           paid_at: new Date().toISOString(),
         });
 
@@ -297,7 +451,7 @@ export default function GigDetail() {
             record_id: createdOrder.id,
             new_data: {
               gateway_reference: reference,
-              amount: createdOrder.price,
+              amount: totalAmountPaid,
               status: "completed",
             },
           },
@@ -509,6 +663,16 @@ export default function GigDetail() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Reviews Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Reviews & Ratings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ReviewsDisplay gigId={gig.id} />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar */}
@@ -519,6 +683,29 @@ export default function GigDetail() {
               <CardTitle>Order Now</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Verification Alert for Unverified Clients */}
+              {user && profile?.user_type === "client" && profile?.verification_status !== "verified" && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-amber-900 mb-1">
+                        Account Verification Required
+                      </p>
+                      <p className="text-xs text-amber-700 mb-3">
+                        Your account needs to be verified before you can purchase gigs. You can still browse and contact freelancers.
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => setShowVerificationDialog(true)}
+                        className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                      >
+                        Request Verification
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {selectedPackage ? (
                 <>
                   <div className="flex justify-between items-center">
@@ -539,6 +726,10 @@ export default function GigDetail() {
                     <p className="text-sm text-gray-500 text-center">
                       You cannot order your own service
                     </p>
+                  ) : profile?.user_type === "client" && profile?.verification_status !== "verified" ? (
+                    <Button className="w-full" size="lg" disabled>
+                      Verification Required
+                    </Button>
                   ) : (
                     <Button className="w-full" size="lg" onClick={handleOrder}>
                       Place Order
@@ -690,6 +881,62 @@ export default function GigDetail() {
               />
             </div>
           )}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Verification Request Dialog */}
+      {showVerificationDialog && (
+        <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+                Account Verification Required
+              </DialogTitle>
+              <DialogDescription>
+                Your account needs to be verified before you can purchase gigs on the platform.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-900 mb-2">
+                  <strong>What you can do now:</strong>
+                </p>
+                <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside">
+                  <li>Browse and view all gigs</li>
+                  <li>Contact freelancers via messages</li>
+                  <li>Save gigs for later</li>
+                </ul>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-900 mb-2">
+                  <strong>To get verified:</strong>
+                </p>
+                <p className="text-xs text-blue-700 mb-2">
+                  Click the button below to send a verification request to our admin team. They will review your account and verify it shortly.
+                </p>
+                <p className="text-xs text-blue-600 italic">
+                  💡 Once verified, this page will automatically refresh so you can complete your purchase.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowVerificationDialog(false)}
+                disabled={sendingVerificationRequest}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRequestVerification}
+                disabled={sendingVerificationRequest}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {sendingVerificationRequest ? "Sending Request..." : "Verify Me"}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       )}

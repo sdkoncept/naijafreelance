@@ -420,8 +420,11 @@ export default function ClientOrders() {
           <Card>
             <CardContent className="py-16 text-center">
               <DollarSign className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Payment History</h3>
-              <p className="text-gray-600">Your payment history will appear here</p>
+              <h3 className="text-xl font-semibold mb-2">Billing and Payments</h3>
+              <p className="text-gray-600 mb-6">View your billing history, payment methods, and balances</p>
+              <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+                <Link to="/client/billing">Go to Billing & Payments</Link>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

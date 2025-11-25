@@ -24,12 +24,14 @@ const editUserSchema = z.object({
 });
 
 type UserType = "freelancer" | "client" | "admin";
+type VerificationStatus = "verified" | "pending" | "unverified";
 
 interface UserWithRole {
   id: string;
   email: string;
   full_name: string;
   user_type: UserType | null;
+  verification_status: VerificationStatus | null;
   created_at: string;
 }
 
@@ -47,6 +49,8 @@ export default function UserManagement() {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingProfileEdit, setPendingProfileEdit] = useState<EditUserForm | null>(null);
   const [isEditConfirmDialogOpen, setIsEditConfirmDialogOpen] = useState(false);
+  const [pendingVerificationChange, setPendingVerificationChange] = useState<{ userId: string; newStatus: VerificationStatus; oldStatus: VerificationStatus | null } | null>(null);
+  const [isVerificationConfirmDialogOpen, setIsVerificationConfirmDialogOpen] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<EditUserForm>({
     resolver: zodResolver(editUserSchema),
@@ -76,6 +80,7 @@ export default function UserManagement() {
           email: profile.email || "",
           full_name: profile.full_name,
           user_type: (profile.user_type as UserType) || "client",
+          verification_status: (profile.verification_status as VerificationStatus) || "unverified",
           created_at: profile.created_at,
         };
       }) || [];
@@ -207,6 +212,48 @@ export default function UserManagement() {
     }
   };
 
+  const handleVerificationStatusChange = (userId: string, newStatus: VerificationStatus) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    setPendingVerificationChange({
+      userId,
+      newStatus,
+      oldStatus: user.verification_status,
+    });
+    setIsVerificationConfirmDialogOpen(true);
+  };
+
+  const confirmVerificationStatusChange = async () => {
+    if (!pendingVerificationChange) return;
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ verification_status: pendingVerificationChange.newStatus })
+        .eq("id", pendingVerificationChange.userId);
+
+      if (error) throw error;
+
+      await logAction({
+        action: "verification_status_change",
+        table_name: "profiles",
+        record_id: pendingVerificationChange.userId,
+        old_data: { verification_status: pendingVerificationChange.oldStatus },
+        new_data: { verification_status: pendingVerificationChange.newStatus },
+      });
+
+      toast.success("Verification status updated successfully");
+      setIsVerificationConfirmDialogOpen(false);
+      setPendingVerificationChange(null);
+      fetchUsers();
+    } catch (error: any) {
+      toast.error("Failed to update verification status: " + error.message);
+      setIsVerificationConfirmDialogOpen(false);
+      setPendingVerificationChange(null);
+    }
+  };
+
   const getUserTypeBadgeVariant = (userType: UserType) => {
     switch (userType) {
       case "admin":
@@ -215,6 +262,19 @@ export default function UserManagement() {
         return "default";
       case "client":
         return "secondary";
+    }
+  };
+
+  const getVerificationBadgeVariant = (status: VerificationStatus | null) => {
+    switch (status) {
+      case "verified":
+        return "default";
+      case "pending":
+        return "secondary";
+      case "unverified":
+        return "outline";
+      default:
+        return "outline";
     }
   };
 
@@ -235,7 +295,7 @@ export default function UserManagement() {
         <CardHeader>
           <CardTitle>User Management</CardTitle>
           <CardDescription>
-            Manage user types and permissions. Admin has full access to all features.
+            Manage user types, permissions, and verification status. Admin has full access to all features.
             Freelancers can create gigs and manage their services. Clients can browse and place orders.
           </CardDescription>
         </CardHeader>
@@ -246,6 +306,7 @@ export default function UserManagement() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>User Type</TableHead>
+                <TableHead>Verification</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -274,6 +335,27 @@ export default function UserManagement() {
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="freelancer">Freelancer</SelectItem>
                         <SelectItem value="client">Client</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={userData.verification_status || "unverified"}
+                      onValueChange={(value) => handleVerificationStatusChange(userData.id, value as VerificationStatus)}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue>
+                          <Badge variant={getVerificationBadgeVariant(userData.verification_status)}>
+                            {userData.verification_status ? 
+                              userData.verification_status.charAt(0).toUpperCase() + userData.verification_status.slice(1) 
+                              : "Unverified"}
+                          </Badge>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="verified">Verified</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="unverified">Unverified</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
@@ -439,6 +521,39 @@ export default function UserManagement() {
             </AlertDialogCancel>
             <AlertDialogAction onClick={confirmProfileEdit}>
               Confirm Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmation Dialog for Verification Status Change */}
+      <AlertDialog open={isVerificationConfirmDialogOpen} onOpenChange={setIsVerificationConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Verification Status Change</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingVerificationChange && (
+                <>
+                  Are you sure you want to change this user's verification status from{" "}
+                  <strong>{pendingVerificationChange.oldStatus || "unverified"}</strong> to{" "}
+                  <strong>{pendingVerificationChange.newStatus}</strong>?
+                  <br />
+                  <br />
+                  This will immediately update the user's verification status and may affect their access to certain features.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsVerificationConfirmDialogOpen(false);
+              setPendingVerificationChange(null);
+              fetchUsers(); // Refresh to reset the select
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmVerificationStatusChange}>
+              Confirm Change
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

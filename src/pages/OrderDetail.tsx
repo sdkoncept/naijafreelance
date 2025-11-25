@@ -5,12 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Calendar, DollarSign, Package, User, FileText, CheckCircle, Clock, XCircle } from "lucide-react";
+import { ArrowLeft, Calendar, DollarSign, Package, User, FileText, CheckCircle, Clock, XCircle, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import PaystackPayment from "@/components/PaystackPayment";
 import FeedbackForm from "@/components/FeedbackForm";
+import DeliverOrderForm from "@/components/DeliverOrderForm";
 import OrderProgressTimeline from "@/components/OrderProgressTimeline";
+import { notifyOrderCompleted } from "@/utils/notifications";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuditLog } from "@/hooks/use-audit-log";
 
@@ -57,13 +59,47 @@ export default function OrderDetail() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const [closingOrder, setClosingOrder] = useState(false);
+  const [deliverables, setDeliverables] = useState<any[]>([]);
 
   useEffect(() => {
     if (id) {
       fetchOrderDetails();
+      fetchDeliverables();
     }
   }, [id]);
+
+  const fetchDeliverables = async () => {
+    if (!id) return;
+    try {
+      const { data, error } = await supabase
+        .from("order_deliverables")
+        .select(`
+          *,
+          delivered_by_profile:profiles!order_deliverables_delivered_by_fkey (
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq("order_id", id)
+        .order("delivered_at", { ascending: false });
+
+      if (error && error.code !== "PGRST205") {
+        console.error("Error fetching deliverables:", error);
+      } else if (data) {
+        const transformed = (data || []).map((d: any) => ({
+          ...d,
+          delivered_by_profile: Array.isArray(d.delivered_by_profile)
+            ? d.delivered_by_profile[0]
+            : d.delivered_by_profile,
+        }));
+        setDeliverables(transformed);
+      }
+    } catch (error) {
+      console.error("Error fetching deliverables:", error);
+    }
+  };
 
   const fetchOrderDetails = async () => {
     try {
@@ -183,6 +219,14 @@ export default function OrderDetail() {
         new_data: { status: "completed" },
       });
 
+      // Notify both client and freelancer
+      notifyOrderCompleted(order.client_id, order.id, true).catch(
+        (err) => console.error("Failed to notify client:", err)
+      );
+      notifyOrderCompleted(order.freelancer_id, order.id, false).catch(
+        (err) => console.error("Failed to notify freelancer:", err)
+      );
+
       toast.success("Gig closed successfully!");
       fetchOrderDetails(); // Refresh order data
     } catch (error: any) {
@@ -199,22 +243,69 @@ export default function OrderDetail() {
     fetchOrderDetails(); // Refresh to show updated status
   };
 
+  const handleDeliverySuccess = async () => {
+    setShowDeliveryDialog(false);
+    await fetchOrderDetails();
+    await fetchDeliverables();
+    toast.success("Order delivered successfully!");
+  };
+
+  const handleRequestRevision = async () => {
+    if (!order || !user) return;
+
+    const confirmed = window.confirm(
+      "Request a revision? This will change the order status back to 'in_progress' and notify the freelancer."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: "in_progress",
+          delivered_at: null, // Reset delivery
+        })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      // Log the action
+      await logAction("order_status_change", "orders", order.id, {
+        old_data: { status: order.status },
+        new_data: { status: "in_progress" },
+      });
+
+      toast.success("Revision requested. The freelancer has been notified.");
+      fetchOrderDetails();
+    } catch (error: any) {
+      console.error("Error requesting revision:", error);
+      toast.error("Failed to request revision: " + error.message);
+    }
+  };
+
   const handlePaymentSuccess = async (reference: string) => {
     if (!order) return;
 
     try {
-      // Create payment record
+      // Calculate total amount paid (including fees)
+      // Fees: 1.5% platform fee + ₦100 processing fee
+      const platformFee = order.price * 0.015;
+      const processingFee = 100;
+      const totalAmountPaid = order.price + platformFee + processingFee;
+
+      // Create payment record with actual amount paid
       const { error: paymentError } = await supabase
         .from("payments")
         .insert({
           order_id: order.id,
-          amount: order.price,
+          amount: totalAmountPaid, // Record the actual amount paid (including fees)
           currency: order.currency,
           payment_gateway: "paystack",
           gateway_reference: reference,
           status: "completed",
-          commission_amount: order.price * 0.20,
-          freelancer_payout_amount: order.price * 0.80,
+          commission_amount: order.price * 0.20, // Commission on service price
+          freelancer_payout_amount: order.price * 0.80, // Payout on service price
           paid_at: new Date().toISOString(),
         });
 
@@ -491,6 +582,63 @@ export default function OrderDetail() {
           )}
         </div>
 
+        {/* Deliverables Display */}
+        {deliverables.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Deliverables</CardTitle>
+              <CardDescription>
+                Files and work delivered by the freelancer
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {deliverables.map((deliverable) => (
+                <div key={deliverable.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        Delivered {new Date(deliverable.delivered_at).toLocaleDateString()}
+                      </p>
+                      {deliverable.delivered_by_profile && (
+                        <p className="text-xs text-gray-500">
+                          by {deliverable.delivered_by_profile.full_name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {deliverable.message && (
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {deliverable.message}
+                    </p>
+                  )}
+                  {deliverable.file_urls && deliverable.file_urls.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-900">Files:</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {deliverable.file_urls.map((url: string, idx: number) => (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            <FileText className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                            <span className="text-sm text-gray-700 truncate">
+                              {url.startsWith("data:") ? `File ${idx + 1}` : url.split("/").pop() || `File ${idx + 1}`}
+                            </span>
+                            <Download className="w-4 h-4 text-gray-400 ml-auto flex-shrink-0" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Actions */}
         {isFreelancer && order.status === "in_progress" && (
           <Card>
@@ -498,8 +646,11 @@ export default function OrderDetail() {
               <CardTitle>Order Actions</CardTitle>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full sm:w-auto">
-                Mark as Delivered
+              <Button
+                onClick={() => setShowDeliveryDialog(true)}
+                className="w-full sm:w-auto"
+              >
+                Deliver Order
               </Button>
             </CardContent>
           </Card>
@@ -511,23 +662,42 @@ export default function OrderDetail() {
               <CardTitle>Order Actions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2 flex-wrap">
-                <Button 
-                  className="flex-1 sm:flex-none"
-                  onClick={handleCloseGig}
-                  disabled={closingOrder}
-                >
-                  {closingOrder ? "Closing..." : "Close Gig"}
-                </Button>
-                {order.status === "delivered" && (
-                  <Button variant="outline" className="flex-1 sm:flex-none">
-                    Request Revision
+              {order.status === "delivered" ? (
+                <div className="space-y-3">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      className="flex-1 sm:flex-none"
+                      onClick={handleCloseGig}
+                      disabled={closingOrder}
+                    >
+                      {closingOrder ? "Closing..." : "Accept & Complete"}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 sm:flex-none"
+                      onClick={handleRequestRevision}
+                    >
+                      Request Revision
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Accept the delivery to complete the order and release payment. You'll be asked to provide feedback.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Button 
+                    className="w-full sm:w-auto"
+                    onClick={handleCloseGig}
+                    disabled={closingOrder}
+                  >
+                    {closingOrder ? "Closing..." : "Close Gig"}
                   </Button>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Closing the gig will mark it as completed. You'll be asked to provide feedback.
-              </p>
+                  <p className="text-xs text-gray-500">
+                    Closing the gig will mark it as completed. You'll be asked to provide feedback.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -548,6 +718,25 @@ export default function OrderDetail() {
               freelancerId={order.freelancer_id}
               onSuccess={handleFeedbackSuccess}
               onCancel={() => setShowFeedbackDialog(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Delivery Dialog */}
+      {order && (
+        <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Deliver Order</DialogTitle>
+              <DialogDescription>
+                Upload your completed work and deliver it to the client.
+              </DialogDescription>
+            </DialogHeader>
+            <DeliverOrderForm
+              orderId={order.id}
+              onSuccess={handleDeliverySuccess}
+              onCancel={() => setShowDeliveryDialog(false)}
             />
           </DialogContent>
         </Dialog>

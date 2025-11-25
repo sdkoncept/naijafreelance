@@ -10,8 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, User, Mail, Phone, MapPin, FileText, Camera } from "lucide-react";
+import { Save, User, Mail, Phone, MapPin, FileText, Camera, Briefcase, Star, DollarSign, Image } from "lucide-react";
+import ReviewsDisplay from "@/components/ReviewsDisplay";
 import { useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Profile() {
   const { profile, user, refreshProfile, userRole } = useAuth();
@@ -135,14 +137,42 @@ export default function Profile() {
     );
   }
 
+  // For freelancers, show tabs; for others, show simple form
+  const isFreelancer = profile?.user_type === "freelancer";
+
   return (
     <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-4xl">
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">Profile</h1>
-        <p className="text-sm sm:text-base text-gray-600">Manage your profile information</p>
+        <p className="text-sm sm:text-base text-gray-600">
+          {isFreelancer ? "Manage your freelancer profile" : "Manage your profile information"}
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {isFreelancer ? (
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">
+              <User className="w-4 h-4 mr-2" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="portfolio">
+              <Image className="w-4 h-4 mr-2" />
+              Portfolio
+            </TabsTrigger>
+            <TabsTrigger value="reviews">
+              <Star className="w-4 h-4 mr-2" />
+              Reviews
+            </TabsTrigger>
+            <TabsTrigger value="pricing">
+              <DollarSign className="w-4 h-4 mr-2" />
+              Pricing
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
         {/* Profile Picture Section */}
         <Card>
           <CardHeader>
@@ -367,17 +397,313 @@ export default function Profile() {
           </Card>
         )}
 
-        {/* Submit Button */}
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={saving}>
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
-        </div>
-      </form>
+              {/* Submit Button */}
+              <div className="flex justify-end gap-4">
+                <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+
+          {/* Portfolio Tab */}
+          <TabsContent value="portfolio" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Portfolio</CardTitle>
+                <CardDescription>Showcase your best work</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Briefcase className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">Portfolio Gallery</h3>
+                  <p className="text-gray-600 mb-6">
+                    Upload images, videos, or documents to showcase your work. Coming soon!
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Reviews Tab */}
+          <TabsContent value="reviews" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Reviews & Ratings</CardTitle>
+                <CardDescription>
+                  See what clients say about your work
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {user?.id && <ReviewsDisplay freelancerId={user.id} />}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Pricing Tab */}
+          <TabsContent value="pricing" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pricing & Packages</CardTitle>
+                <CardDescription>Manage your service packages</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <DollarSign className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">Service Packages</h3>
+                  <p className="text-gray-600 mb-6">
+                    View and manage pricing for your gigs. Go to your gigs to set pricing.
+                  </p>
+                  <Button asChild>
+                    <a href="/freelancer/dashboard">Manage Gigs</a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Profile Picture Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Picture</CardTitle>
+              <CardDescription>Your profile picture is visible to other users</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-6">
+                <Avatar className="w-24 h-24">
+                  <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
+                  <AvatarFallback className="text-2xl">
+                    {profile?.full_name?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Profile picture upload coming soon
+                  </p>
+                  <Button type="button" variant="outline" disabled>
+                    <Camera className="mr-2 h-4 w-4" />
+                    Upload Photo
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Basic Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
+              <CardDescription>Your basic profile details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">
+                    <User className="inline w-4 h-4 mr-2" />
+                    Full Name *
+                  </Label>
+                  <Input
+                    id="full_name"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    required
+                    maxLength={100}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    <Mail className="inline w-4 h-4 mr-2" />
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                  <p className="text-xs text-gray-500">Email cannot be changed</p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">
+                    <Phone className="inline w-4 h-4 mr-2" />
+                    Phone Number
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="+234 800 000 0000"
+                    maxLength={20}
+                  />
+                </div>
+
+                {!profile?.user_type && (
+                  <div className="space-y-2">
+                    <Label htmlFor="user_type">Account Type *</Label>
+                    <Select
+                      value={formData.user_type}
+                      onValueChange={(value: any) => setFormData({ ...formData, user_type: value })}
+                      required={!profile?.user_type}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="freelancer">Freelancer</SelectItem>
+                        <SelectItem value="client">Client</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">
+                      Choose whether you want to offer services or hire freelancers
+                    </p>
+                  </div>
+                )}
+
+                {profile?.user_type && (
+                  <div className="space-y-2">
+                    <Label>Account Type</Label>
+                    <div className="pt-2">
+                      <Badge variant="secondary" className="text-sm">
+                        {profile.user_type}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-500">Account type cannot be changed</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Location */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Location</CardTitle>
+              <CardDescription>Help clients find you</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">
+                    <MapPin className="inline w-4 h-4 mr-2" />
+                    City
+                  </Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="e.g., Lagos"
+                    maxLength={100}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Select
+                    value={formData.state}
+                    onValueChange={(value) => setFormData({ ...formData, state: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {nigerianStates.map((state) => (
+                        <SelectItem key={state} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Bio */}
+          <Card>
+            <CardHeader>
+              <CardTitle>About You</CardTitle>
+              <CardDescription>
+                <FileText className="inline w-4 h-4 mr-2" />
+                Tell others about yourself
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="bio">Bio</Label>
+                <Textarea
+                  id="bio"
+                  value={formData.bio}
+                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                  placeholder="Write a brief description about yourself..."
+                  rows={5}
+                  maxLength={500}
+                />
+                <p className="text-xs text-gray-500">
+                  {formData.bio.length}/500 characters
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Verification Status */}
+          {profile?.verification_status && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Verification Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Badge
+                  variant={
+                    profile.verification_status === "verified"
+                      ? "default"
+                      : profile.verification_status === "pending"
+                      ? "secondary"
+                      : "outline"
+                  }
+                >
+                  {profile.verification_status.charAt(0).toUpperCase() +
+                    profile.verification_status.slice(1)}
+                </Badge>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Role Badge */}
+          {userRole && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Role</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Badge variant="default">{userRole}</Badge>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Submit Button */}
+          <div className="flex justify-end gap-4">
+            <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              <Save className="mr-2 h-4 w-4" />
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

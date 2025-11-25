@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { DollarSign, TrendingUp, Wallet, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import WithdrawalRequestForm from "@/components/WithdrawalRequestForm";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface EarningsData {
   total_earnings: number;
@@ -35,6 +37,7 @@ export default function Earnings() {
     completed_orders: 0,
   });
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [showWithdrawalDialog, setShowWithdrawalDialog] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -199,7 +202,7 @@ export default function Earnings() {
               <CardTitle>Withdrawal History</CardTitle>
               <CardDescription>View your withdrawal requests</CardDescription>
             </div>
-            <Button disabled>
+            <Button onClick={() => setShowWithdrawalDialog(true)}>
               <Download className="mr-2 h-4 w-4" />
               Request Withdrawal
             </Button>
@@ -246,6 +249,26 @@ export default function Earnings() {
           )}
         </CardContent>
       </Card>
+
+      {/* Withdrawal Request Dialog */}
+      <Dialog open={showWithdrawalDialog} onOpenChange={setShowWithdrawalDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Request Withdrawal</DialogTitle>
+            <DialogDescription>
+              Withdraw your earnings to your Nigerian bank account
+            </DialogDescription>
+          </DialogHeader>
+          <WithdrawalRequestForm
+            availableBalance={earnings.available_balance}
+            onSuccess={() => {
+              setShowWithdrawalDialog(false);
+              fetchWithdrawals();
+            }}
+            onCancel={() => setShowWithdrawalDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

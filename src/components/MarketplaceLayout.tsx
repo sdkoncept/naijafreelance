@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Search, Menu, User, LogOut, Settings, Briefcase, ShoppingBag, Users, Shield } from "lucide-react";
+import { Search, Menu, User, LogOut, Settings, Briefcase, ShoppingBag, Users, Shield, AlertTriangle } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
+import ChatbotButton from "./ChatbotButton";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface MarketplaceLayoutProps {
@@ -55,26 +57,51 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-1">
               <Link
-                to="/browse"
+                to="/"
                 className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
               >
-                Find Freelancers
+                Home
               </Link>
-              <Link
-                to="/how-it-works"
-                className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
-              >
-                How It Works
-              </Link>
+              {isAdmin ? (
+                <Link
+                  to="/disputes"
+                  className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
+                >
+                  Disputes
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/browse"
+                    className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
+                  >
+                    Find Freelancers
+                  </Link>
+                  <Link
+                    to="/how-it-works"
+                    className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
+                  >
+                    How It Works
+                  </Link>
+                </>
+              )}
               {user && (
                 <>
                   {isFreelancer && (
-                    <Link
-                      to="/jobs"
-                      className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
-                    >
-                      Jobs
-                    </Link>
+                    <>
+                      <Link
+                        to="/jobs"
+                        className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
+                      >
+                        Jobs
+                      </Link>
+                      <Link
+                        to="/community"
+                        className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
+                      >
+                        Community
+                      </Link>
+                    </>
                   )}
                   {isAdmin && (
                     <>
@@ -101,67 +128,24 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
                     </Link>
                   )}
                   {isClient && (
-                    <Link
-                      to="/client/orders"
-                      className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
-                    >
-                      My Orders
-                    </Link>
+                    <>
+                      <Link
+                        to="/client/orders"
+                        className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
+                      >
+                        My Orders
+                      </Link>
+                      <Link
+                        to="/logo-creator"
+                        className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
+                      >
+                        Logo Creator
+                      </Link>
+                    </>
                   )}
                   <Link
                     to="/messages"
                     className="px-4 py-2 text-gray-700 hover:text-primary font-medium transition-colors rounded-lg hover:bg-gray-50"
-                  >
-                    Messages
-                  </Link>
-                </>
-              )}
-            </nav>
-              {user && (
-                <>
-                  {isFreelancer && (
-                    <Link
-                      to="/jobs"
-                      className="text-gray-700 hover:text-slate-700 transition-colors"
-                    >
-                      Jobs
-                    </Link>
-                  )}
-                  {isAdmin && (
-                    <>
-                      <Link
-                        to="/users"
-                        className="text-gray-700 hover:text-slate-700 transition-colors"
-                      >
-                        User Management
-                      </Link>
-                      <Link
-                        to="/audit-logs"
-                        className="text-gray-700 hover:text-slate-700 transition-colors"
-                      >
-                        Audit Logs
-                      </Link>
-                    </>
-                  )}
-                  {isFreelancer && (
-                    <Link
-                      to="/freelancer/dashboard"
-                      className="text-gray-700 hover:text-slate-700 transition-colors"
-                    >
-                      Dashboard
-                    </Link>
-                  )}
-                  {isClient && (
-                    <Link
-                      to="/client/orders"
-                      className="text-gray-700 hover:text-slate-700 transition-colors"
-                    >
-                      My Orders
-                    </Link>
-                  )}
-                  <Link
-                    to="/messages"
-                    className="text-gray-700 hover:text-slate-700 transition-colors"
                   >
                     Messages
                   </Link>
@@ -173,6 +157,7 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
             <div className="flex items-center gap-3">
               {user ? (
                 <>
+                  <NotificationBell />
                   {isAdmin && (
                     <>
                       <Button asChild variant="outline" className="hidden md:flex border-gray-300 hover:bg-gray-50">
@@ -237,6 +222,12 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
                               Audit Logs
                             </Link>
                           </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/disputes">
+                              <AlertTriangle className="mr-2 h-4 w-4" />
+                              Disputes
+                            </Link>
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                         </>
                       )}
@@ -289,11 +280,34 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
                 <SheetContent>
                   <nav className="flex flex-col gap-4 mt-8">
                     <Link
-                      to="/browse"
+                      to="/"
                       className="text-gray-700 hover:text-slate-700 transition-colors"
                     >
-                      Browse
+                      Home
                     </Link>
+                    {isAdmin ? (
+                      <Link
+                        to="/disputes"
+                        className="text-gray-700 hover:text-slate-700 transition-colors"
+                      >
+                        Disputes
+                      </Link>
+                    ) : (
+                      <>
+                        <Link
+                          to="/browse"
+                          className="text-gray-700 hover:text-slate-700 transition-colors"
+                        >
+                          Browse
+                        </Link>
+                        <Link
+                          to="/how-it-works"
+                          className="text-gray-700 hover:text-slate-700 transition-colors"
+                        >
+                          How It Works
+                        </Link>
+                      </>
+                    )}
                     {user && (
                       <>
                         {isAdmin && (
@@ -339,6 +353,12 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
                               Browse Jobs
                             </Link>
                             <Link
+                              to="/community"
+                              className="text-gray-700 hover:text-slate-700 transition-colors"
+                            >
+                              Community
+                            </Link>
+                            <Link
                               to="/freelancer/gigs/create"
                               className="text-gray-700 hover:text-slate-700 transition-colors"
                             >
@@ -353,6 +373,12 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
                               className="text-gray-700 hover:text-slate-700 transition-colors"
                             >
                               My Gigs
+                            </Link>
+                            <Link
+                              to="/logo-creator"
+                              className="text-gray-700 hover:text-slate-700 transition-colors"
+                            >
+                              Logo Creator
                             </Link>
                             <Link
                               to="/post-job"
@@ -443,6 +469,7 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
           </div>
         </div>
       </footer>
+      <ChatbotButton />
     </div>
   );
 }

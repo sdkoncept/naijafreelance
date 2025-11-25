@@ -121,10 +121,10 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center px-2">
-              <Button asChild size="lg" className="bg-white text-primary hover:bg-gray-50 text-base h-12 px-8">
+              <Button asChild size="lg" className="bg-white text-black hover:bg-gray-50 text-base h-12 px-8">
                 <Link to="/post-job">Post a Job</Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white/10 text-base h-12 px-8">
+              <Button asChild size="lg" className="bg-white text-black hover:bg-gray-100 text-base h-12 px-8 border-2 border-white">
                 <Link to="/browse">Browse Freelancers</Link>
               </Button>
             </div>
@@ -276,10 +276,10 @@ export default function Home() {
             Join thousands of freelancers and clients building success together on Nigeria's premier marketplace
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="bg-white text-primary hover:bg-gray-50 text-base h-12 px-8">
+            <Button asChild size="lg" className="bg-white text-black hover:bg-gray-50 text-base h-12 px-8">
               <Link to="/auth">Sign Up Free</Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white/10 text-base h-12 px-8">
+            <Button asChild size="lg" className="bg-white text-black hover:bg-gray-100 text-base h-12 px-8 border-2 border-white">
               <Link to="/browse">
                 Browse Services
                 <ArrowRight className="ml-2 w-4 h-4" />

@@ -94,12 +94,17 @@ export default function PaystackPayment({
         onPaymentInitiated();
       }
 
+      // Calculate total amount with fees (same calculation as displayed)
+      const platformFee = amount * 0.015; // 1.5% platform fee
+      const processingFee = 100; // Fixed processing fee
+      const totalAmount = amount + platformFee + processingFee;
+
       // Initialize Paystack payment
       const keyToUse = PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
       initializePaystack({
         publicKey: keyToUse,
         email,
-        amount: nairaToKobo(amount),
+        amount: nairaToKobo(totalAmount), // Send total amount including fees
         reference,
         metadata: {
           order_id: orderId,
