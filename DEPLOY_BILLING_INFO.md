@@ -67,10 +67,6 @@ FROM pg_tables
 WHERE schemaname = 'public' AND tablename = 'billing_info';
 
 -- Check policies exist
-SELECT policyname, cmd, qual 
-FROM pg_policies 
-WHERE tablename = 'billing_info';
-```
 
 ## Step 3: Deploy Frontend Changes
 

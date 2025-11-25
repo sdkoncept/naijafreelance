@@ -153,10 +153,23 @@ export default function Messages() {
       // Send notification to receiver
       const senderName = (data as any)?.sender?.full_name || profile?.full_name || "Someone";
       
-      await notifyNewMessage(
-        selectedConversation,
-        senderName
-      );
+      try {
+        await notifyNewMessage(
+          selectedConversation,
+          senderName
+        );
+        // Also create notification with message ID
+        await supabase.from("notifications").insert({
+          user_id: selectedConversation,
+          type: "message",
+          title: "New Message",
+          message: `You have a new message from ${senderName}`,
+          related_id: data.id,
+        });
+      } catch (notifError) {
+        console.error("Error sending notification:", notifError);
+        // Don't fail the message send if notification fails
+      }
 
       // Refresh messages to show the new one
       await fetchMessages();

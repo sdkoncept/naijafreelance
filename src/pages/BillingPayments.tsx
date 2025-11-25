@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { X, ChevronDown, Search, Download, FileText, Check } from "lucide-react";
+import AddPaymentMethod from "@/components/AddPaymentMethod";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -45,6 +46,7 @@ export default function BillingPayments() {
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
 
   // Load billing info
   useEffect(() => {
@@ -644,10 +646,7 @@ export default function BillingPayments() {
                     Add a payment method to make checkout faster and more secure
                   </p>
                   <Button
-                    onClick={() => {
-                      // This will open Paystack inline form
-                      toast.info("Payment method saving will be integrated with Paystack. For security, card details are tokenized and never stored on our servers.");
-                    }}
+                    onClick={() => setShowAddPaymentMethod(true)}
                     className="bg-primary hover:bg-primary/90"
                   >
                     Add Payment Method
@@ -672,6 +671,16 @@ export default function BillingPayments() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Add Payment Method Dialog */}
+      <AddPaymentMethod
+        open={showAddPaymentMethod}
+        onOpenChange={setShowAddPaymentMethod}
+        onSuccess={() => {
+          // Refresh payment methods list if needed
+          toast.success("Payment method added successfully!");
+        }}
+      />
     </div>
   );
 }

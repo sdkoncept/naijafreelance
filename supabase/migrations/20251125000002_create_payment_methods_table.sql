@@ -58,6 +58,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists
+DROP TRIGGER IF EXISTS update_payment_methods_updated_at ON public.payment_methods;
+
 CREATE TRIGGER update_payment_methods_updated_at
   BEFORE UPDATE ON public.payment_methods
   FOR EACH ROW
@@ -78,6 +81,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Drop trigger if it exists
+DROP TRIGGER IF EXISTS ensure_single_default_payment_method_trigger ON public.payment_methods;
 
 CREATE TRIGGER ensure_single_default_payment_method_trigger
   BEFORE INSERT OR UPDATE ON public.payment_methods
