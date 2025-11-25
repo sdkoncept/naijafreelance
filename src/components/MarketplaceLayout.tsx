@@ -204,6 +204,22 @@ export default function MarketplaceLayout({ children }: MarketplaceLayoutProps) 
                                 {profile.user_type}
                               </Badge>
                             )}
+                            {profile?.verification_status && profile.user_type === 'client' && (
+                              <Badge 
+                                variant={
+                                  profile.verification_status === "verified"
+                                    ? "default"
+                                    : profile.verification_status === "pending"
+                                    ? "secondary"
+                                    : "destructive"
+                                }
+                                className="w-fit"
+                              >
+                                {profile.verification_status === "verified" ? "✓ Verified" : 
+                                 profile.verification_status === "pending" ? "⏳ Pending" : 
+                                 "⚠ Unverified"}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </DropdownMenuLabel>

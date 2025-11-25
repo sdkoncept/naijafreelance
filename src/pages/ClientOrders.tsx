@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Search, Package, Calendar, DollarSign, MessageSquare, Briefcase, Heart, Settings, ArrowRight, Clock, CheckCircle } from "lucide-react";
+import { Search, Package, Calendar, DollarSign, MessageSquare, Briefcase, Heart, Settings, ArrowRight, Clock, CheckCircle, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 
@@ -193,6 +193,69 @@ export default function ClientOrders() {
         <h1 className="text-3xl sm:text-4xl font-bold mb-2">Client Dashboard</h1>
         <p className="text-gray-600">Track and manage your projects and orders</p>
       </div>
+
+      {/* Verification Status Banner */}
+      {profile?.user_type === "client" && (
+        <Card className={`mb-6 ${
+          profile.verification_status === "verified"
+            ? "bg-green-50 border-green-200"
+            : profile.verification_status === "pending"
+            ? "bg-amber-50 border-amber-200"
+            : "bg-red-50 border-red-200"
+        }`}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              {profile.verification_status === "verified" ? (
+                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
+              ) : profile.verification_status === "pending" ? (
+                <Clock className="w-6 h-6 text-amber-600 flex-shrink-0" />
+              ) : (
+                <XCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-gray-900">
+                    Account Verification: {profile.verification_status ? profile.verification_status.charAt(0).toUpperCase() + profile.verification_status.slice(1) : "Unverified"}
+                  </h3>
+                  <Badge
+                    variant={
+                      profile.verification_status === "verified"
+                        ? "default"
+                        : profile.verification_status === "pending"
+                        ? "secondary"
+                        : "destructive"
+                    }
+                  >
+                    {profile.verification_status ? profile.verification_status.charAt(0).toUpperCase() + profile.verification_status.slice(1) : "Unverified"}
+                  </Badge>
+                </div>
+                {profile.verification_status === "verified" ? (
+                  <p className="text-sm text-gray-700">
+                    ✓ Your account is verified. You can purchase gigs and use all platform features.
+                  </p>
+                ) : profile.verification_status === "pending" ? (
+                  <p className="text-sm text-gray-700">
+                    Your verification request is being reviewed. You'll be notified once your account is verified.
+                  </p>
+                ) : (
+                  <div>
+                    <p className="text-sm text-gray-700 mb-2">
+                      Your account needs to be verified before you can purchase gigs. You can still browse services and contact freelancers.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => navigate("/browse")}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      Request Verification
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
