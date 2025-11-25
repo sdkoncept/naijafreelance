@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CreditCard, CheckCircle } from "lucide-react";
+import { Loader2, CreditCard, CheckCircle, Shield, Lock, Info, CheckCircle2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { loadPaystackScript, initializePaystack, nairaToKobo } from "@/lib/paystack";
 import { toast } from "sonner";
 
@@ -153,57 +154,113 @@ export default function PaystackPayment({
     );
   }
 
+  // Calculate fees (example: 1.5% + ₦100)
+  const platformFee = amount * 0.015; // 1.5% platform fee
+  const processingFee = 100; // Fixed processing fee
+  const totalFees = platformFee + processingFee;
+  const totalAmount = amount + totalFees;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CreditCard className="w-5 h-5" />
+    <Card className="border-gray-200">
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <CreditCard className="w-6 h-6 text-primary" />
           Complete Payment
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-base">
           Secure payment powered by Paystack
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-gray-600">Order Total:</span>
-            <span className="text-2xl font-bold text-slate-700">
-              ₦{amount.toLocaleString()}
-            </span>
-          </div>
-          <div className="text-sm text-gray-500">
-            Order: {orderNumber}
+      <CardContent className="space-y-6 p-6">
+        {/* Order Summary */}
+        <div className="space-y-3">
+          <h3 className="font-semibold text-gray-900">Order Summary</h3>
+          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Order Number:</span>
+              <span className="font-medium text-gray-900">{orderNumber}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Service Amount:</span>
+              <span className="font-medium text-gray-900">₦{amount.toLocaleString()}</span>
+            </div>
           </div>
         </div>
 
+        <Separator />
+
+        {/* Fee Breakdown */}
+        <div className="space-y-3">
+          <h3 className="font-semibold text-gray-900">Fee Breakdown</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Platform Fee (1.5%):</span>
+              <span className="text-gray-900">₦{platformFee.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Processing Fee:</span>
+              <span className="text-gray-900">₦{processingFee.toLocaleString()}</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between text-base font-semibold">
+              <span className="text-gray-900">Total Amount:</span>
+              <span className="text-primary text-xl">₦{totalAmount.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Escrow Explanation */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="font-semibold text-blue-900">Payment Protection</h4>
+              <p className="text-sm text-blue-800 leading-relaxed">
+                Your payment is held securely in escrow until the work is completed and you approve it. 
+                This ensures you only pay when you're satisfied with the delivered work.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Security Info */}
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <Lock className="w-4 h-4" />
+          <span>Secured by Paystack • SSL Encrypted</span>
+        </div>
+
+        {/* Payment Button */}
         <Button
           onClick={handlePayment}
           disabled={loading || !scriptLoaded}
-          className="w-full"
+          className="w-full bg-primary hover:bg-primary/90 h-12 text-base font-semibold"
           size="lg"
         >
           {loading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Processing...
             </>
           ) : scriptLoaded ? (
             <>
-              <CreditCard className="mr-2 h-4 w-4" />
-              Pay ₦{amount.toLocaleString()}
+              <CreditCard className="mr-2 h-5 w-5" />
+              Pay ₦{totalAmount.toFixed(2)}
             </>
           ) : (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Loading payment gateway...
             </>
           )}
         </Button>
 
-        <div className="text-xs text-center text-gray-500">
-          <p>Your payment is secured by Paystack</p>
-          <p className="mt-1">You will be redirected to complete payment</p>
+        <div className="text-xs text-center text-gray-500 space-y-1">
+          <p className="flex items-center justify-center gap-1">
+            <Info className="w-3 h-3" />
+            You will be redirected to complete payment securely
+          </p>
         </div>
       </CardContent>
     </Card>

@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Send, MessageSquare, Search } from "lucide-react";
+import { Send, MessageSquare, Search, Paperclip, Image as ImageIcon, File } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface Message {
@@ -173,11 +174,22 @@ export default function Messages() {
     return acc;
   }, {} as Record<string, any>);
 
+  // Get conversation messages sorted by time
+  const conversationMessages = selectedConversation
+    ? messages
+        .filter(
+          (msg) =>
+            (msg.sender_id === user?.id && msg.receiver_id === selectedConversation) ||
+            (msg.receiver_id === user?.id && msg.sender_id === selectedConversation)
+        )
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    : [];
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-700"></div>
+        <div className="text-center py-20">
+          <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
           <p className="mt-4 text-gray-600">Loading messages...</p>
         </div>
       </div>
@@ -185,22 +197,22 @@ export default function Messages() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Messages</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-2">Messages</h1>
         <p className="text-gray-600">Communicate with freelancers and clients</p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6 h-[600px]">
+      <div className="grid md:grid-cols-3 gap-6 h-[calc(100vh-250px)] min-h-[600px]">
         {/* Conversations List */}
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden border-gray-200">
           <CardContent className="p-0 h-full flex flex-col">
-            <div className="p-4 border-b">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
                   placeholder="Search conversations..."
-                  className="pl-9"
+                  className="pl-10 h-11"
                 />
               </div>
             </div>
@@ -217,26 +229,31 @@ export default function Messages() {
                     <button
                       key={conv.userId}
                       onClick={() => setSelectedConversation(conv.userId)}
-                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
-                        selectedConversation === conv.userId ? "bg-slate-50" : ""
+                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors border-l-4 ${
+                        selectedConversation === conv.userId
+                          ? "bg-primary/5 border-primary"
+                          : "border-transparent"
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Avatar>
+                        <Avatar className="h-12 w-12 border-2 border-gray-200">
                           <AvatarImage src={conv.avatar} />
-                          <AvatarFallback>
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                             {conv.userName?.charAt(0)?.toUpperCase() || "U"}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <p className="font-medium truncate">{conv.userName}</p>
+                            <p className="font-semibold text-gray-900 truncate">{conv.userName}</p>
                             {conv.unread && (
-                              <Badge variant="default" className="h-2 w-2 p-0 rounded-full" />
+                              <Badge className="h-2 w-2 p-0 rounded-full bg-primary" />
                             )}
                           </div>
-                          <p className="text-sm text-gray-500 truncate">
+                          <p className="text-sm text-gray-600 truncate">
                             {conv.lastMessage.content}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {new Date(conv.lastMessage.created_at).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
@@ -249,98 +266,128 @@ export default function Messages() {
         </Card>
 
         {/* Message View */}
-        <Card className="md:col-span-2 overflow-hidden">
+        <Card className="md:col-span-2 overflow-hidden border-gray-200">
           <CardContent className="p-0 h-full flex flex-col">
             {selectedConversation ? (
               <>
-                <div className="p-4 border-b">
+                <div className="p-4 border-b border-gray-200 bg-gray-50">
                   <div className="flex items-center gap-3">
-                    <Avatar>
+                    <Avatar className="h-10 w-10 border-2 border-gray-200">
                       <AvatarImage
-                        src={
-                          conversations[selectedConversation]?.avatar
-                        }
+                        src={conversations[selectedConversation]?.avatar}
                       />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                         {conversations[selectedConversation]?.userName
                           ?.charAt(0)
                           ?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">
+                      <p className="font-semibold text-gray-900">
                         {conversations[selectedConversation]?.userName}
                       </p>
+                      <p className="text-xs text-gray-500">Active now</p>
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages
-                    .filter(
-                      (msg) =>
-                        (msg.sender_id === user?.id &&
-                          msg.receiver_id === selectedConversation) ||
-                        (msg.receiver_id === user?.id &&
-                          msg.sender_id === selectedConversation)
-                    )
-                    .map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex ${
-                          msg.sender_id === user?.id
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
-                      >
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+                  {conversationMessages.length === 0 ? (
+                    <div className="h-full flex items-center justify-center">
+                      <div className="text-center text-gray-500">
+                        <MessageSquare className="mx-auto h-12 w-12 mb-4 text-gray-400" />
+                        <p>No messages yet. Start the conversation!</p>
+                      </div>
+                    </div>
+                  ) : (
+                    conversationMessages.map((msg, index) => {
+                      const isOwn = msg.sender_id === user?.id;
+                      const showAvatar = index === 0 || conversationMessages[index - 1].sender_id !== msg.sender_id;
+                      const showTime = index === conversationMessages.length - 1 || 
+                        new Date(msg.created_at).getTime() - new Date(conversationMessages[index + 1].created_at).getTime() > 300000; // 5 minutes
+
+                      return (
                         <div
-                          className={`max-w-[70%] rounded-lg p-3 ${
-                            msg.sender_id === user?.id
-                              ? "bg-slate-700 text-white"
-                              : "bg-gray-100"
+                          key={msg.id}
+                          className={`flex items-end gap-2 ${
+                            isOwn ? "justify-end" : "justify-start"
                           }`}
                         >
-                          <p className="text-sm">{msg.content}</p>
-                          <p
-                            className={`text-xs mt-1 ${
-                              msg.sender_id === user?.id
-                                ? "text-slate-200"
-                                : "text-gray-500"
-                            }`}
-                          >
-                            {new Date(msg.created_at).toLocaleTimeString()}
-                          </p>
+                          {!isOwn && showAvatar && (
+                            <Avatar className="h-8 w-8 border border-gray-200">
+                              <AvatarImage src={msg.sender?.avatar_url} />
+                              <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                {msg.sender?.full_name?.charAt(0)?.toUpperCase() || "U"}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          {!isOwn && !showAvatar && <div className="w-8" />}
+                          <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"} max-w-[70%]`}>
+                            <div
+                              className={`rounded-2xl px-4 py-2 ${
+                                isOwn
+                                  ? "bg-primary text-white rounded-br-sm"
+                                  : "bg-white text-gray-900 rounded-bl-sm border border-gray-200"
+                              }`}
+                            >
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                            </div>
+                            {showTime && (
+                              <p className={`text-xs mt-1 px-2 ${isOwn ? "text-gray-500" : "text-gray-400"}`}>
+                                {new Date(msg.created_at).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })
+                  )}
                 </div>
-                <div className="p-4 border-t">
-                  <div className="flex gap-2">
-                    <Input
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                      placeholder="Type a message..."
-                      disabled={sending}
-                    />
+                <div className="p-4 border-t border-gray-200 bg-white">
+                  <div className="flex items-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="flex-shrink-0"
+                      title="Attach file"
+                    >
+                      <Paperclip className="h-5 w-5 text-gray-500" />
+                    </Button>
+                    <div className="flex-1 relative">
+                      <Textarea
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                        placeholder="Type a message..."
+                        disabled={sending}
+                        className="resize-none min-h-[44px] max-h-32 pr-12"
+                        rows={1}
+                      />
+                    </div>
                     <Button
                       onClick={handleSendMessage}
                       disabled={!newMessage.trim() || sending}
+                      size="lg"
+                      className="bg-primary hover:bg-primary/90 flex-shrink-0"
                     >
-                      <Send className="h-4 w-4" />
+                      <Send className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>
               </>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-500">
-                <div className="text-center">
-                  <MessageSquare className="mx-auto h-12 w-12 mb-4 text-gray-400" />
-                  <p>Select a conversation to start messaging</p>
+              <div className="h-full flex items-center justify-center bg-gray-50">
+                <div className="text-center text-gray-500">
+                  <MessageSquare className="mx-auto h-16 w-16 mb-4 text-gray-300" />
+                  <p className="text-lg font-medium mb-2">Select a conversation</p>
+                  <p className="text-sm">Choose a conversation from the list to start messaging</p>
                 </div>
               </div>
             )}

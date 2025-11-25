@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Star, Clock, TrendingUp } from "lucide-react";
+import { Search, Star, Clock, TrendingUp, Grid, List, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
+import FilterSidebar, { FilterState } from "@/components/FilterSidebar";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface Gig {
   id: string;
@@ -52,6 +54,16 @@ export default function Browse() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>(categorySlug || "all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [filters, setFilters] = useState<FilterState>({
+    category: categorySlug || "all",
+    skillLevel: "all",
+    priceRange: [0, 1000000],
+    deliveryTime: "all",
+    minRating: 0,
+    location: "all",
+    verified: false,
+  });
 
   useEffect(() => {
     fetchCategories();
@@ -168,169 +180,240 @@ export default function Browse() {
     return prices.length > 0 ? Math.min(...prices) : null;
   };
 
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    if (newFilters.category !== "all") {
+      setSelectedCategory(newFilters.category);
+    }
+  };
+
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+    <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">Browse Services</h1>
-        <p className="text-sm sm:text-base text-gray-600">
+      <div className="mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-3">Find Freelancers</h1>
+        <p className="text-lg text-gray-600">
           Discover talented Nigerian freelancers and their services
         </p>
       </div>
 
-      {/* Search and Filters */}
-      <div className="mb-8 space-y-4">
-        <div className="flex gap-4 flex-col md:flex-row">
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="flex gap-3">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <Input
               type="text"
-              placeholder="Search for services (e.g., logo design, web development)"
+              placeholder="Search for services, skills, or freelancers..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-12 h-12 text-base"
             />
           </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category.id} value={category.slug}>
-                  {category.icon} {category.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="oldest">Oldest First</SelectItem>
-              <SelectItem value="price_low">Price: Low to High</SelectItem>
-              <SelectItem value="price_high">Price: High to Low</SelectItem>
-              <SelectItem value="rating">Highest Rated</SelectItem>
-              <SelectItem value="orders">Most Orders</SelectItem>
-            </SelectContent>
-          </Select>
+          <Button size="lg" className="px-8 bg-primary hover:bg-primary/90">
+            Search
+          </Button>
         </div>
       </div>
 
-      {/* Results */}
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-700"></div>
-          <p className="mt-4 text-gray-600">Loading services...</p>
-        </div>
-      ) : filteredGigs.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-xl text-gray-600 mb-4">No services found</p>
-          <p className="text-gray-500">
-            {searchTerm || selectedCategory !== "all"
-              ? "Try adjusting your search or filters"
-              : "Be the first to create a service!"}
-          </p>
-          {!searchTerm && selectedCategory === "all" && (
-            <Button asChild className="mt-4">
-              <Link to="/freelancer/gigs/create">Create Your First Gig</Link>
-            </Button>
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="mb-4 text-sm text-gray-600">
-            Showing {filteredGigs.length} service{filteredGigs.length !== 1 ? "s" : ""}
+      <div className="flex gap-6">
+        {/* Sidebar Filters - Desktop */}
+        <aside className="hidden lg:block w-80 flex-shrink-0">
+          <FilterSidebar
+            categories={categories}
+            onFilterChange={handleFilterChange}
+          />
+        </aside>
+
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="text-sm text-gray-600">
+              {loading ? (
+                "Loading..."
+              ) : (
+                <>
+                  Showing <span className="font-semibold text-gray-900">{filteredGigs.length}</span>{" "}
+                  service{filteredGigs.length !== 1 ? "s" : ""}
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Mobile Filter Button */}
+              <Sheet>
+                <SheetTrigger asChild className="lg:hidden">
+                  <Button variant="outline" size="sm">
+                    <SlidersHorizontal className="w-4 h-4 mr-2" />
+                    Filters
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-80 overflow-y-auto">
+                  <FilterSidebar
+                    categories={categories}
+                    onFilterChange={handleFilterChange}
+                  />
+                </SheetContent>
+              </Sheet>
+
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-1 border rounded-lg p-1">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                  className="h-8 w-8 p-0"
+                >
+                  <Grid className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                  className="h-8 w-8 p-0"
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Sort */}
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="price_low">Price: Low to High</SelectItem>
+                  <SelectItem value="price_high">Price: High to Low</SelectItem>
+                  <SelectItem value="rating">Highest Rated</SelectItem>
+                  <SelectItem value="orders">Most Orders</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredGigs.map((gig) => {
-              const minPrice = getMinPrice(gig);
-              return (
-                <Link key={gig.id} to={`/gig/${gig.slug}`}>
-                  <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
-                    {gig.images && gig.images.length > 0 && (
-                      <div className="aspect-video w-full overflow-hidden rounded-t-lg bg-gray-100">
-                        <img
-                          src={gig.images[0]}
-                          alt={gig.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                    <CardHeader>
-                      <div className="flex items-start justify-between mb-2">
-                        <CardTitle className="text-lg line-clamp-2 flex-1">
-                          {gig.title}
-                        </CardTitle>
-                      </div>
-                      <div className="flex items-center gap-2 mb-2">
-                        {gig.categories && (
-                          <Badge variant="secondary" className="text-xs">
-                            {gig.categories.name}
-                          </Badge>
-                        )}
-                        {gig.average_rating > 0 && (
-                          <div className="flex items-center gap-1 text-sm text-yellow-600">
-                            <Star className="w-4 h-4 fill-current" />
-                            <span>{gig.average_rating.toFixed(1)}</span>
-                          </div>
-                        )}
-                      </div>
-                      <CardDescription className="line-clamp-2">
-                        {gig.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          {gig.orders_count > 0 && (
-                            <div className="flex items-center gap-1">
-                              <TrendingUp className="w-4 h-4" />
-                              <span>{gig.orders_count} orders</span>
-                            </div>
+
+          {/* Results */}
+          {loading ? (
+            <div className="text-center py-20">
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
+              <p className="mt-4 text-gray-600">Loading services...</p>
+            </div>
+          ) : filteredGigs.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-2xl font-semibold text-gray-900 mb-2">No services found</p>
+              <p className="text-gray-600 mb-6">
+                {searchTerm || selectedCategory !== "all"
+                  ? "Try adjusting your search or filters"
+                  : "Be the first to create a service!"}
+              </p>
+              {!searchTerm && selectedCategory === "all" && (
+                <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+                  <Link to="/freelancer/gigs/create">Create Your First Gig</Link>
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                  : "space-y-4"
+              }
+            >
+              {filteredGigs.map((gig) => {
+                const minPrice = getMinPrice(gig);
+                const maxPrice = Math.max(
+                  gig.basic_package_price || 0,
+                  gig.standard_package_price || 0,
+                  gig.premium_package_price || 0
+                );
+                return (
+                  <Link key={gig.id} to={`/gig/${gig.slug}`}>
+                    <Card className="h-full hover:shadow-xl transition-all duration-300 cursor-pointer border-gray-200 hover:border-primary/50 hover:-translate-y-1">
+                      {gig.images && gig.images.length > 0 && (
+                        <div className="aspect-video w-full overflow-hidden rounded-t-lg bg-gray-100">
+                          <img
+                            src={gig.images[0]}
+                            alt={gig.title}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                      )}
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <CardTitle className="text-lg font-semibold line-clamp-2 flex-1">
+                            {gig.title}
+                          </CardTitle>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                          {gig.categories && (
+                            <Badge variant="secondary" className="text-xs">
+                              {gig.categories.name}
+                            </Badge>
                           )}
-                          {gig.views_count > 0 && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              <span>{gig.views_count} views</span>
+                          {gig.average_rating > 0 && (
+                            <div className="flex items-center gap-1 text-sm">
+                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                              <span className="font-medium text-gray-700">
+                                {gig.average_rating.toFixed(1)}
+                              </span>
                             </div>
                           )}
                         </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="font-bold text-base sm:text-lg text-slate-700">
-                          {formatPrice(minPrice)}
-                        </div>
-                        {gig.profiles && (
-                          <div className="flex items-center gap-2">
-                            {gig.profiles.avatar_url ? (
-                              <img
-                                src={gig.profiles.avatar_url}
-                                alt={gig.profiles.full_name}
-                                className="w-6 h-6 rounded-full"
-                              />
-                            ) : (
-                              <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-medium">
-                                {gig.profiles.full_name?.[0]?.toUpperCase() || "U"}
+                        <CardDescription className="line-clamp-2 text-sm">
+                          {gig.description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            {gig.orders_count > 0 && (
+                              <div className="flex items-center gap-1">
+                                <TrendingUp className="w-3.5 h-3.5" />
+                                <span>{gig.orders_count}</span>
                               </div>
                             )}
-                            <span className="text-sm text-gray-600">
-                              {gig.profiles.full_name}
-                            </span>
                           </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        </>
-      )}
+                          {gig.profiles && (
+                            <div className="flex items-center gap-2">
+                              {gig.profiles.avatar_url ? (
+                                <img
+                                  src={gig.profiles.avatar_url}
+                                  alt={gig.profiles.full_name}
+                                  className="w-6 h-6 rounded-full border border-gray-200"
+                                />
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
+                                  {gig.profiles.full_name?.[0]?.toUpperCase() || "U"}
+                                </div>
+                              )}
+                              <span className="text-xs text-gray-600 font-medium">
+                                {gig.profiles.full_name}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between pt-3 border-t">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Starting from</p>
+                            <p className="text-xl font-bold text-gray-900">
+                              {formatPrice(minPrice)}
+                            </p>
+                          </div>
+                          <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                            View Details
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
