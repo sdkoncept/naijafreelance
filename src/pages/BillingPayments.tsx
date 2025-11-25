@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -554,32 +554,79 @@ export default function BillingPayments() {
         <TabsContent value="balances" className="space-y-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Balances</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            {/* Balance Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium text-gray-600">Available Balance</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Available Credits</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold text-gray-900">₦0.00</p>
+                  <p className="text-xs text-gray-500 mt-1">Referral credits & refunds</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Referral Credits</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-bold text-gray-900">₦0.00</p>
+                  <p className="text-2xl font-bold text-green-600">₦0.00</p>
+                  <p className="text-xs text-gray-500 mt-1">From referrals</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium text-gray-600">Total Spent</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Refunds</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-bold text-gray-900">₦0.00</p>
+                  <p className="text-2xl font-bold text-blue-600">₦0.00</p>
+                  <p className="text-xs text-gray-500 mt-1">From cancelled orders</p>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Balance History */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Balance History</CardTitle>
+                <CardDescription>Track your referral credits and refunds</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <p className="text-gray-600 mb-2">No balance history yet</p>
+                  <p className="text-sm text-gray-500">
+                    Refer friends to earn credits, or receive refunds from cancelled orders
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Referral Info */}
+            <Card className="bg-green-50 border-green-200">
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-gray-900 mb-2">💰 Earn Referral Credits</h3>
+                <p className="text-sm text-gray-700 mb-4">
+                  Share your referral link and earn credits when friends sign up and make their first purchase!
+                </p>
+                <div className="flex items-center gap-4">
+                  <Input
+                    value={`${window.location.origin}/signup?ref=${user?.id}`}
+                    readOnly
+                    className="flex-1 bg-white"
+                  />
+                  <Button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/signup?ref=${user?.id}`);
+                      toast.success("Referral link copied!");
+                    }}
+                    variant="outline"
+                  >
+                    Copy Link
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
@@ -587,14 +634,39 @@ export default function BillingPayments() {
         <TabsContent value="payment-methods" className="space-y-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Payment methods</h2>
-            <Card>
+            
+            {/* Saved Payment Methods */}
+            <Card className="mb-6">
               <CardContent className="p-6">
                 <div className="text-center py-12">
-                  <p className="text-gray-600">No payment methods saved</p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Add a payment method to make checkout faster
+                  <p className="text-gray-600 mb-4">No payment methods saved</p>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Add a payment method to make checkout faster and more secure
                   </p>
+                  <Button
+                    onClick={() => {
+                      // This will open Paystack inline form
+                      toast.info("Payment method saving will be integrated with Paystack. For security, card details are tokenized and never stored on our servers.");
+                    }}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    Add Payment Method
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Security Notice */}
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-gray-900 mb-2">🔒 Security & Privacy</h3>
+                <ul className="text-sm text-gray-700 space-y-2 list-disc list-inside">
+                  <li>Card details are <strong>never stored</strong> on our servers</li>
+                  <li>All payment data is <strong>tokenized</strong> by Paystack (PCI DSS compliant)</li>
+                  <li>Only the last 4 digits and card brand are stored for display</li>
+                  <li>Your payment information is encrypted and secure</li>
+                  <li>You can remove saved payment methods at any time</li>
+                </ul>
               </CardContent>
             </Card>
           </div>
@@ -603,5 +675,6 @@ export default function BillingPayments() {
     </div>
   );
 }
+
 
 

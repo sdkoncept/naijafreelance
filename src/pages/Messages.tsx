@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Send, MessageSquare, Search, Paperclip, Image as ImageIcon, File } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { notifyNewMessage } from "@/utils/notifications";
 
 interface Message {
   id: string;
@@ -30,7 +31,7 @@ interface Message {
 }
 
 export default function Messages() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -138,10 +139,24 @@ export default function Messages() {
           receiver_id: selectedConversation,
           content: newMessage.trim(),
         })
-        .select()
+        .select(`
+          *,
+          sender:profiles!messages_sender_id_fkey (
+            full_name,
+            avatar_url
+          )
+        `)
         .single();
 
       if (error) throw error;
+
+      // Send notification to receiver
+      const senderName = (data as any)?.sender?.full_name || profile?.full_name || "Someone";
+      
+      await notifyNewMessage(
+        selectedConversation,
+        senderName
+      );
 
       // Refresh messages to show the new one
       await fetchMessages();
