@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Save, User, Mail, Phone, MapPin, FileText, Camera, Briefcase, Star, DollarSign, Image } from "lucide-react";
 import ReviewsDisplay from "@/components/ReviewsDisplay";
+import PortfolioManager from "@/components/PortfolioManager";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -100,7 +101,10 @@ export default function Profile() {
             full_name: formData.full_name,
             phone: formData.phone,
             bio: formData.bio,
-            location: formData.location,
+            location: {
+              city: formData.city || null,
+              state: formData.state || null,
+            },
             user_type: formData.user_type,
           },
         }]);
@@ -412,21 +416,7 @@ export default function Profile() {
 
           {/* Portfolio Tab */}
           <TabsContent value="portfolio" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Portfolio</CardTitle>
-                <CardDescription>Showcase your best work</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <Briefcase className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">Portfolio Gallery</h3>
-                  <p className="text-gray-600 mb-6">
-                    Upload images, videos, or documents to showcase your work. Coming soon!
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <PortfolioManager />
           </TabsContent>
 
           {/* Reviews Tab */}

@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Star, Clock, TrendingUp, Grid, List, SlidersHorizontal } from "lucide-react";
+import { Search, Star, Clock, TrendingUp, Grid, List, SlidersHorizontal, X, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import FilterSidebar, { FilterState } from "@/components/FilterSidebar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface Gig {
   id: string;
@@ -30,6 +31,7 @@ interface Gig {
   profiles: {
     full_name: string;
     avatar_url?: string;
+    verification_status?: string;
   };
   categories: {
     name: string;
@@ -45,48 +47,101 @@ interface Category {
 }
 
 export default function Browse() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const categorySlug = searchParams.get("category");
+  const queryParam = searchParams.get("q") || "";
   
   const [gigs, setGigs] = useState<Gig[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(queryParam);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>(categorySlug || "all");
-  const [sortBy, setSortBy] = useState<string>("newest");
+  const [sortBy, setSortBy] = useState<string>(searchParams.get("sort") || "newest");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [filters, setFilters] = useState<FilterState>({
     category: categorySlug || "all",
     skillLevel: "all",
-    priceRange: [0, 1000000],
-    deliveryTime: "all",
-    minRating: 0,
-    location: "all",
-    verified: false,
+    priceRange: [
+      parseInt(searchParams.get("minPrice") || "0"),
+      parseInt(searchParams.get("maxPrice") || "1000000")
+    ],
+    deliveryTime: searchParams.get("deliveryTime") || "all",
+    minRating: parseFloat(searchParams.get("minRating") || "0"),
+    location: searchParams.get("location") || "all",
+    verified: searchParams.get("verified") === "true",
   });
+
+  // Debounce search term for autocomplete
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   useEffect(() => {
     fetchCategories();
+  }, []);
+
+  useEffect(() => {
     fetchGigs();
-  }, [selectedCategory, sortBy]);
+  }, [selectedCategory, sortBy, filters, queryParam]);
 
   useEffect(() => {
     if (categorySlug) {
       setSelectedCategory(categorySlug);
+      setFilters(prev => ({ ...prev, category: categorySlug }));
     }
   }, [categorySlug]);
+
+  // Autocomplete suggestions
+  useEffect(() => {
+    if (debouncedSearchTerm.length >= 2) {
+      fetchSuggestions(debouncedSearchTerm);
+    } else {
+      setSuggestions([]);
+    }
+  }, [debouncedSearchTerm]);
 
   const fetchCategories = async () => {
     try {
       const { data, error } = await supabase
-        .from("categories")
+        .from("categories" as any)
         .select("id, name, slug, icon")
         .order("name");
 
       if (error) throw error;
-      setCategories(data || []);
+      setCategories((data || []) as unknown as Category[]);
     } catch (error: any) {
       console.error("Error fetching categories:", error);
+    }
+  };
+
+  const fetchSuggestions = async (term: string) => {
+    try {
+      // Fetch matching gig titles and tags
+      const { data, error } = await supabase
+        .from("gigs" as any)
+        .select("title, tags")
+        .eq("status", "active")
+        .ilike("title", `%${term}%`)
+        .limit(10);
+
+      if (error) throw error;
+
+      const uniqueSuggestions = new Set<string>();
+      (data as any[])?.forEach((gig: any) => {
+        if (gig.title?.toLowerCase().includes(term.toLowerCase())) {
+          uniqueSuggestions.add(gig.title);
+        }
+        gig.tags?.forEach((tag: string) => {
+          if (tag.toLowerCase().includes(term.toLowerCase())) {
+            uniqueSuggestions.add(tag);
+          }
+        });
+      });
+
+      setSuggestions(Array.from(uniqueSuggestions).slice(0, 8));
+    } catch (error) {
+      console.error("Error fetching suggestions:", error);
     }
   };
 
@@ -94,12 +149,13 @@ export default function Browse() {
     try {
       setLoading(true);
       let query = supabase
-        .from("gigs")
+        .from("gigs" as any)
         .select(`
           *,
           profiles:freelancer_id (
             full_name,
-            avatar_url
+            avatar_url,
+            verification_status
           ),
           categories:category_id (
             name,
@@ -108,17 +164,46 @@ export default function Browse() {
         `)
         .eq("status", "active");
 
-      // Filter by category if selected
+      // Apply search term (full-text search)
+      if (queryParam) {
+        query = query.or(`title.ilike.%${queryParam}%,description.ilike.%${queryParam}%,tags.cs.{${queryParam}}`);
+      }
+
+      // Filter by category
       if (selectedCategory !== "all") {
         const { data: categoryData } = await supabase
-          .from("categories")
+          .from("categories" as any)
           .select("id")
           .eq("slug", selectedCategory)
           .single();
 
         if (categoryData) {
-          query = query.eq("category_id", categoryData.id);
+          query = query.eq("category_id", (categoryData as any).id);
         }
+      }
+
+      // Apply price range filter
+      const [minPrice, maxPrice] = filters.priceRange;
+      if (minPrice > 0 || maxPrice < 1000000) {
+        query = query.gte("basic_package_price", minPrice)
+                     .lte("basic_package_price", maxPrice);
+      }
+
+      // Apply minimum rating filter
+      if (filters.minRating > 0) {
+        query = query.gte("average_rating", filters.minRating);
+      }
+
+      // Apply delivery time filter
+      if (filters.deliveryTime !== "all") {
+        const days = parseInt(filters.deliveryTime);
+        query = query.lte("basic_package_delivery_days", days);
+      }
+
+      // Apply verified freelancer filter
+      if (filters.verified) {
+        // This requires a join, so we'll filter after fetching
+        // For now, we'll filter client-side
       }
 
       // Apply sorting
@@ -134,18 +219,28 @@ export default function Browse() {
         query = query.order("average_rating", { ascending: false });
       } else if (sortBy === "orders") {
         query = query.order("orders_count", { ascending: false });
+      } else if (sortBy === "relevance") {
+        // For relevance, we'll use a combination of rating and orders
+        query = query.order("average_rating", { ascending: false });
       }
 
-      const { data, error } = await query.limit(50);
+      const { data, error } = await query.limit(100);
 
       if (error) throw error;
 
-      // Transform the data to match our interface
-      const transformedGigs = (data || []).map((gig: any) => ({
+      // Transform the data
+      let transformedGigs = (data || []).map((gig: any) => ({
         ...gig,
         profiles: Array.isArray(gig.profiles) ? gig.profiles[0] : gig.profiles,
         categories: Array.isArray(gig.categories) ? gig.categories[0] : gig.categories,
       }));
+
+      // Filter verified freelancers if needed (client-side for now)
+      if (filters.verified) {
+        transformedGigs = transformedGigs.filter(
+          (gig: Gig) => gig.profiles?.verification_status === "verified"
+        );
+      }
 
       setGigs(transformedGigs);
     } catch (error: any) {
@@ -156,15 +251,76 @@ export default function Browse() {
     }
   };
 
-  const filteredGigs = gigs.filter((gig) => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      gig.title.toLowerCase().includes(searchLower) ||
-      gig.description.toLowerCase().includes(searchLower) ||
-      gig.tags.some((tag) => tag.toLowerCase().includes(searchLower))
-    );
-  });
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    setShowSuggestions(value.length >= 2);
+    
+    // Update URL params
+    const newParams = new URLSearchParams(searchParams);
+    if (value) {
+      newParams.set("q", value);
+    } else {
+      newParams.delete("q");
+    }
+    setSearchParams(newParams);
+  };
+
+  const handleSearchSubmit = () => {
+    setShowSuggestions(false);
+    fetchGigs();
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setSearchTerm(suggestion);
+    setShowSuggestions(false);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("q", suggestion);
+    setSearchParams(newParams);
+    fetchGigs();
+  };
+
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    if (newFilters.category !== "all") {
+      setSelectedCategory(newFilters.category);
+    }
+    
+    // Update URL params
+    const newParams = new URLSearchParams(searchParams);
+    if (newFilters.category !== "all") {
+      newParams.set("category", newFilters.category);
+    } else {
+      newParams.delete("category");
+    }
+    if (newFilters.priceRange[0] > 0 || newFilters.priceRange[1] < 1000000) {
+      newParams.set("minPrice", newFilters.priceRange[0].toString());
+      newParams.set("maxPrice", newFilters.priceRange[1].toString());
+    }
+    if (newFilters.deliveryTime !== "all") {
+      newParams.set("deliveryTime", newFilters.deliveryTime);
+    }
+    if (newFilters.minRating > 0) {
+      newParams.set("minRating", newFilters.minRating.toString());
+    }
+    if (newFilters.location !== "all") {
+      newParams.set("location", newFilters.location);
+    }
+    if (newFilters.verified) {
+      newParams.set("verified", "true");
+    } else {
+      newParams.delete("verified");
+    }
+    setSearchParams(newParams);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+    setShowSuggestions(false);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("q");
+    setSearchParams(newParams);
+    fetchGigs();
+  };
 
   const formatPrice = (price: number | null) => {
     if (!price) return "Price on request";
@@ -180,13 +336,6 @@ export default function Browse() {
     return prices.length > 0 ? Math.min(...prices) : null;
   };
 
-  const handleFilterChange = (newFilters: FilterState) => {
-    setFilters(newFilters);
-    if (newFilters.category !== "all") {
-      setSelectedCategory(newFilters.category);
-    }
-  };
-
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
@@ -197,23 +346,91 @@ export default function Browse() {
         </p>
       </div>
 
-      {/* Search Bar */}
+      {/* Enhanced Search Bar */}
       <div className="mb-6">
-        <div className="flex gap-3">
+        <div className="flex gap-3 relative">
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <Input
               type="text"
               placeholder="Search for services, skills, or freelancers..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 h-12 text-base"
+              onChange={(e) => handleSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearchSubmit();
+                } else if (e.key === "Escape") {
+                  setShowSuggestions(false);
+                }
+              }}
+              onFocus={() => setShowSuggestions(searchTerm.length >= 2)}
+              className="pl-12 pr-10 h-12 text-base"
             />
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            
+            {/* Autocomplete Suggestions */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                {suggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <Search className="w-4 h-4 text-gray-400" />
+                    <span>{suggestion}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <Button size="lg" className="px-8 bg-primary hover:bg-primary/90">
+          <Button 
+            size="lg" 
+            className="px-8 bg-primary hover:bg-primary/90"
+            onClick={handleSearchSubmit}
+          >
+            <Search className="w-4 h-4 mr-2" />
             Search
           </Button>
         </div>
+        
+        {/* Quick Filters */}
+        {queryParam && (
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-gray-600">Quick filters:</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSortBy("rating");
+                const newParams = new URLSearchParams(searchParams);
+                newParams.set("sort", "rating");
+                setSearchParams(newParams);
+              }}
+            >
+              <Star className="w-3 h-3 mr-1" />
+              Top Rated
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFilters(prev => ({ ...prev, verified: true }));
+                handleFilterChange({ ...filters, verified: true });
+              }}
+            >
+              <Sparkles className="w-3 h-3 mr-1" />
+              Verified Only
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-6">
@@ -222,6 +439,7 @@ export default function Browse() {
           <FilterSidebar
             categories={categories}
             onFilterChange={handleFilterChange}
+            initialFilters={filters}
           />
         </aside>
 
@@ -234,8 +452,11 @@ export default function Browse() {
                 "Loading..."
               ) : (
                 <>
-                  Showing <span className="font-semibold text-gray-900">{filteredGigs.length}</span>{" "}
-                  service{filteredGigs.length !== 1 ? "s" : ""}
+                  Showing <span className="font-semibold text-gray-900">{gigs.length}</span>{" "}
+                  service{gigs.length !== 1 ? "s" : ""}
+                  {queryParam && (
+                    <span> for "<span className="font-semibold">{queryParam}</span>"</span>
+                  )}
                 </>
               )}
             </div>
@@ -252,6 +473,7 @@ export default function Browse() {
                   <FilterSidebar
                     categories={categories}
                     onFilterChange={handleFilterChange}
+                    initialFilters={filters}
                   />
                 </SheetContent>
               </Sheet>
@@ -277,11 +499,20 @@ export default function Browse() {
               </div>
 
               {/* Sort */}
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select 
+                value={sortBy} 
+                onValueChange={(value) => {
+                  setSortBy(value);
+                  const newParams = new URLSearchParams(searchParams);
+                  newParams.set("sort", value);
+                  setSearchParams(newParams);
+                }}
+              >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="relevance">Most Relevant</SelectItem>
                   <SelectItem value="newest">Newest First</SelectItem>
                   <SelectItem value="oldest">Oldest First</SelectItem>
                   <SelectItem value="price_low">Price: Low to High</SelectItem>
@@ -299,15 +530,15 @@ export default function Browse() {
               <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
               <p className="mt-4 text-gray-600">Loading services...</p>
             </div>
-          ) : filteredGigs.length === 0 ? (
+          ) : gigs.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-2xl font-semibold text-gray-900 mb-2">No services found</p>
               <p className="text-gray-600 mb-6">
-                {searchTerm || selectedCategory !== "all"
+                {queryParam || selectedCategory !== "all"
                   ? "Try adjusting your search or filters"
                   : "Be the first to create a service!"}
               </p>
-              {!searchTerm && selectedCategory === "all" && (
+              {!queryParam && selectedCategory === "all" && (
                 <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
                   <Link to="/freelancer/gigs/create">Create Your First Gig</Link>
                 </Button>
@@ -321,23 +552,26 @@ export default function Browse() {
                   : "space-y-4"
               }
             >
-              {filteredGigs.map((gig) => {
+              {gigs.map((gig) => {
                 const minPrice = getMinPrice(gig);
-                const maxPrice = Math.max(
-                  gig.basic_package_price || 0,
-                  gig.standard_package_price || 0,
-                  gig.premium_package_price || 0
-                );
                 return (
                   <Link key={gig.id} to={`/gig/${gig.slug}`}>
                     <Card className="h-full hover:shadow-xl transition-all duration-300 cursor-pointer border-gray-200 hover:border-primary/50 hover:-translate-y-1">
                       {gig.images && gig.images.length > 0 && (
-                        <div className="aspect-video w-full overflow-hidden rounded-t-lg bg-gray-100">
+                        <div className="aspect-video w-full overflow-hidden rounded-t-lg bg-gray-100 relative">
                           <img
                             src={gig.images[0]}
                             alt={gig.title}
                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                           />
+                          {gig.profiles?.verification_status === "verified" && (
+                            <div className="absolute top-2 right-2">
+                              <Badge className="bg-primary text-white">
+                                <Sparkles className="w-3 h-3 mr-1" />
+                                Verified
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       )}
                       <CardHeader className="pb-3">
@@ -417,4 +651,3 @@ export default function Browse() {
     </div>
   );
 }
-

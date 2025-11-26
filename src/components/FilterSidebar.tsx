@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ interface FilterSidebarProps {
   categories: Array<{ id: string; name: string; slug: string }>;
   onFilterChange: (filters: FilterState) => void;
   className?: string;
+  initialFilters?: FilterState;
 }
 
 export interface FilterState {
@@ -29,16 +30,26 @@ export default function FilterSidebar({
   categories,
   onFilterChange,
   className = "",
+  initialFilters,
 }: FilterSidebarProps) {
-  const [filters, setFilters] = useState<FilterState>({
-    category: "all",
-    skillLevel: "all",
-    priceRange: [0, 1000000],
-    deliveryTime: "all",
-    minRating: 0,
-    location: "all",
-    verified: false,
-  });
+  const [filters, setFilters] = useState<FilterState>(
+    initialFilters || {
+      category: "all",
+      skillLevel: "all",
+      priceRange: [0, 1000000],
+      deliveryTime: "all",
+      minRating: 0,
+      location: "all",
+      verified: false,
+    }
+  );
+
+  // Update filters when initialFilters change
+  useEffect(() => {
+    if (initialFilters) {
+      setFilters(initialFilters);
+    }
+  }, [initialFilters]);
 
   const updateFilter = (key: keyof FilterState, value: any) => {
     const newFilters = { ...filters, [key]: value };
