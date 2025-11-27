@@ -91,6 +91,35 @@ const features = [
 export default function Home() {
   return (
     <div className="min-h-screen">
+      {/* Promotional Banner */}
+      <section className="w-full relative overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-primary/80">
+        <div className="w-full">
+          <img 
+            src="/banner.png" 
+            alt="Naija Freelance - Find Talented Nigerian Freelancers"
+            className="w-full h-auto object-cover"
+            style={{ maxHeight: '600px', display: 'block' }}
+            onError={(e) => {
+              // Try alternative formats if png doesn't exist
+              const target = e.target as HTMLImageElement;
+              const currentSrc = target.src;
+              
+              if (currentSrc.includes('.png')) {
+                target.src = '/banner.jpg';
+              } else if (currentSrc.includes('.jpg')) {
+                target.src = '/banner.webp';
+              } else {
+                // Hide the section if no image format works
+                const section = target.closest('section');
+                if (section) {
+                  section.style.display = 'none';
+                }
+              }
+            }}
+          />
+        </div>
+      </section>
+
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]"></div>
