@@ -10,12 +10,21 @@ export default function ChatbotButton() {
     <>
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 w-14 h-14 rounded-full shadow-lg z-40"
+        className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 w-14 h-14 rounded-full shadow-lg z-40"
         size="icon"
       >
         <Bot className="h-6 w-6" />
       </Button>
-      {isOpen && <AIChatbot onClose={() => setIsOpen(false)} />}
+      {isOpen && (
+        <>
+          {/* Mobile-only backdrop for focus/contrast; tap to close */}
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-40 sm:hidden"
+            onClick={() => setIsOpen(false)}
+          />
+          <AIChatbot onClose={() => setIsOpen(false)} />
+        </>
+      )}
     </>
   );
 }

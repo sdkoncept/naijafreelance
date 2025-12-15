@@ -170,7 +170,7 @@ export default function AIChatbot({ onClose }: AIChatbotProps) {
   };
 
   return (
-    <Card className="fixed bottom-4 right-4 w-96 h-[600px] shadow-2xl z-50 flex flex-col">
+    <Card className="fixed bottom-4 right-4 w-[calc(100vw-2rem)] max-w-md sm:max-w-lg sm:w-96 h-[70vh] max-h-[700px] sm:h-[600px] shadow-2xl z-50 flex flex-col overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
@@ -185,7 +185,7 @@ export default function AIChatbot({ onClose }: AIChatbotProps) {
         )}
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-0">
-        <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+        <ScrollArea className="flex-1 p-4 pr-3 overflow-y-auto" ref={scrollAreaRef}>
           <div className="space-y-4">
             {messages.map((message, index) => (
               <div
@@ -200,13 +200,13 @@ export default function AIChatbot({ onClose }: AIChatbotProps) {
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
+                  className={`max-w-[85%] sm:max-w-[75%] rounded-lg p-3 break-words ${
                     message.role === "user"
                       ? "bg-primary text-white"
                       : "bg-gray-100 text-gray-900"
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                 </div>
                 {message.role === "user" && (
                   <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
