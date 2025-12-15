@@ -153,21 +153,47 @@ export default function Messages() {
       // Send notification to receiver
       const senderName = (data as any)?.sender?.full_name || profile?.full_name || "Someone";
       
+      // Create notification - try direct insert first, then fallback to RPC function
       try {
-        await notifyNewMessage(
-          selectedConversation,
-          senderName
-        );
-        // Also create notification with message ID
-        await supabase.from("notifications").insert({
-          user_id: selectedConversation,
-          type: "message",
-          title: "New Message",
-          message: `You have a new message from ${senderName}`,
-          related_id: data.id,
-        });
-      } catch (notifError) {
-        console.error("Error sending notification:", notifError);
+        // Try direct insert first
+        const { data: notificationData, error: notifError } = await supabase
+          .from("notifications")
+          .insert({
+            user_id: selectedConversation,
+            type: "message",
+            title: "New Message",
+            message: `You have a new message from ${senderName}`,
+            related_id: data.id,
+          })
+          .select()
+          .single();
+
+        if (notifError) {
+          console.error("Direct insert failed, trying RPC function:", notifError);
+          
+          // Fallback: Use the database function (SECURITY DEFINER)
+          const { data: rpcData, error: rpcError } = await supabase.rpc("create_notification", {
+            p_user_id: selectedConversation,
+            p_type: "message",
+            p_title: "New Message",
+            p_message: `You have a new message from ${senderName}`,
+            p_related_id: data.id,
+          });
+
+          if (rpcError) {
+            console.error("RPC function also failed:", rpcError);
+            console.error("Notification error details:", {
+              directInsert: notifError,
+              rpcFunction: rpcError,
+            });
+          } else {
+            console.log("Notification created via RPC function:", rpcData);
+          }
+        } else {
+          console.log("Notification created successfully:", notificationData);
+        }
+      } catch (notifError: any) {
+        console.error("Unexpected error creating notification:", notifError);
         // Don't fail the message send if notification fails
       }
 

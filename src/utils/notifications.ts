@@ -27,21 +27,44 @@ export async function createNotification({
   title,
   message,
   relatedId = null,
-}: CreateNotificationParams): Promise<void> {
+}: CreateNotificationParams): Promise<boolean> {
   try {
-    const { error } = await supabase.from("notifications").insert({
-      user_id: userId,
-      type,
-      title,
-      message,
-      related_id: relatedId,
-    });
+    const { data, error } = await supabase
+      .from("notifications")
+      .insert({
+        user_id: userId,
+        type,
+        title,
+        message,
+        related_id: relatedId,
+      })
+      .select()
+      .single();
 
-    if (error && error.code !== "PGRST205") {
-      console.error("Error creating notification:", error);
+    if (error) {
+      console.error("Error creating notification:", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+      
+      // Check if table doesn't exist
+      if (error.code === "PGRST116" || error.message?.includes("does not exist")) {
+        console.warn("Notifications table not found. Please run the migration: 20251124000016_ensure_notifications_table.sql");
+      }
+      return false;
     }
-  } catch (error) {
-    console.error("Error creating notification:", error);
+
+    if (data) {
+      console.log("Notification created successfully:", data.id);
+      return true;
+    }
+
+    return false;
+  } catch (error: any) {
+    console.error("Unexpected error creating notification:", error);
+    return false;
   }
 }
 
