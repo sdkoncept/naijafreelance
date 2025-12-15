@@ -17,9 +17,9 @@ export default function ChatbotButton() {
       </Button>
       {isOpen && (
         <>
-          {/* Mobile-only backdrop for focus/contrast; tap to close */}
+          {/* Backdrop for focus/contrast; click to close */}
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-40 sm:hidden"
+            className="fixed inset-0 bg-black/35 backdrop-blur-[1px] z-40"
             onClick={() => setIsOpen(false)}
           />
           <AIChatbot onClose={() => setIsOpen(false)} />
